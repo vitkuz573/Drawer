@@ -55,8 +55,8 @@ public partial class Home : ComponentBase, IDisposable
     [JSInvokable]
     public async Task UpdateJson(string json)
     {
-        Console.WriteLine($"Received JSON: {json}");
         JsonInput = json;
+
         await InvokeAsync(StateHasChanged);
     }
 

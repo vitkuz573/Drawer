@@ -1,6 +1,9 @@
-﻿// wwwroot/js/drawing.js
-
-window.initialize = function (svgElement, dotNetHelper) {
+﻿window.initialize = function (svgElement, dotNetHelper) {
+    /**
+     * Инициализирует SVG элемент и настраивает все необходимые обработчики событий.
+     * @param {HTMLElement} svgElement - Ссылка на SVG элемент.
+     * @param {DotNetObjectReference} dotNetHelper - Ссылка на объект .NET для взаимодействия.
+     */
     const svg = d3.select(svgElement)
         .attr("width", 800)
         .attr("height", 600)
@@ -22,13 +25,14 @@ window.initialize = function (svgElement, dotNetHelper) {
     let currentColor = "#0000ff";
     let currentElement = null;
     let contextMenuVisible = false;
-    let isLocked = false; // Переменная для блокировки
-    let selectionBox = null; // Текущая рамка выделения
+    let isLocked = false;
+    let selectionBox = null;
 
-    // Ссылка на Blazor
     const dotNet = dotNetHelper;
 
-    // Настройка контекстного меню
+    /**
+     * Создаёт и настраивает контекстное меню.
+     */
     const contextMenu = d3.select("body")
         .append("div")
         .attr("id", "custom-context-menu")
@@ -42,7 +46,9 @@ window.initialize = function (svgElement, dotNetHelper) {
         .style("min-width", "150px")
         .style("border-radius", "4px");
 
-    // Добавление пунктов в контекстное меню
+    /**
+     * Добавляет элементы меню для удаления и выполнения пользовательских действий.
+     */
     contextMenu.append("div")
         .attr("class", "menu-item")
         .style("padding", "8px 12px")
@@ -53,6 +59,8 @@ window.initialize = function (svgElement, dotNetHelper) {
             if (selectedShape && !isLocked) {
                 deleteShape(selectedShape);
                 hideContextMenu();
+                dotNet.invokeMethodAsync('UpdateJson', JSON.stringify(shapes))
+                    .catch(error => console.error(error));
             }
         });
 
@@ -71,12 +79,12 @@ window.initialize = function (svgElement, dotNetHelper) {
         });
 
     /**
-     * Показывает контекстное меню в указанных координатах.
+     * Отображает контекстное меню в заданных координатах.
      * @param {number} x - Координата X.
      * @param {number} y - Координата Y.
      */
     function showContextMenu(x, y) {
-        if (isLocked) return; // Предотвращает показ контекстного меню при блокировке
+        if (isLocked) return;
         contextMenu.style("left", `${x}px`)
             .style("top", `${y}px`)
             .style("display", "block");
@@ -91,25 +99,16 @@ window.initialize = function (svgElement, dotNetHelper) {
         contextMenuVisible = false;
     }
 
-    // Скрыть контекстное меню при клике вне его
-    d3.select("body").on("click", () => {
-        if (contextMenuVisible) {
-            hideContextMenu();
-        }
-    });
-
     /**
-     * Создает ручки для изменения размеров выбранной фигуры.
+     * Создаёт ручки для изменения размеров выбранной фигуры.
      * @param {Object} shape - Выбранная фигура.
      */
     function createResizeHandles(shape) {
-        // Удаляем существующие ручки
         svg.selectAll(".resize-handle").remove();
 
         if (!shape) return;
 
         if (shape.Type === "rect") {
-            // Ручки для прямоугольника (4 угла)
             const corners = [
                 { x: shape.X, y: shape.Y },
                 { x: shape.X + shape.Width, y: shape.Y },
@@ -131,7 +130,7 @@ window.initialize = function (svgElement, dotNetHelper) {
                 .style("stroke", "black")
                 .style("cursor", "nwse-resize")
                 .on("mousedown", (event, d) => {
-                    if (isLocked) return; // Предотвращает изменение размера при блокировке
+                    if (isLocked) return;
                     event.stopPropagation();
                     isResizing = true;
                     resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
@@ -139,8 +138,7 @@ window.initialize = function (svgElement, dotNetHelper) {
                     startY = event.clientY;
                 });
         } else if (shape.Type === "circle") {
-            // Ручка для круга (точка на окружности)
-            const handle = svg.append("circle")
+            svg.append("circle")
                 .attr("cx", shape.Cx + shape.R)
                 .attr("cy", shape.Cy)
                 .attr("r", 4)
@@ -149,7 +147,7 @@ window.initialize = function (svgElement, dotNetHelper) {
                 .style("stroke", "black")
                 .style("cursor", "ew-resize")
                 .on("mousedown", (event) => {
-                    if (isLocked) return; // Предотвращает изменение размера при блокировке
+                    if (isLocked) return;
                     event.stopPropagation();
                     isResizing = true;
                     resizeHandleIndex = 0;
@@ -157,7 +155,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                     startY = event.clientY;
                 });
         } else if (shape.Type === "line") {
-            // Ручки для линии (два конца)
             const ends = [
                 { x: shape.X1, y: shape.Y1 },
                 { x: shape.X2, y: shape.Y2 }
@@ -176,7 +173,7 @@ window.initialize = function (svgElement, dotNetHelper) {
                 .style("stroke", "black")
                 .style("cursor", "ew-resize")
                 .on("mousedown", (event, d) => {
-                    if (isLocked) return; // Предотвращает изменение размера при блокировке
+                    if (isLocked) return;
                     event.stopPropagation();
                     isResizing = true;
                     resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
@@ -185,7 +182,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                 });
         }
 
-        // Выделение выбранной фигуры
         if (shape.Type === "rect") {
             svg.selectAll("rect")
                 .filter(d => d === shape)
@@ -201,7 +197,7 @@ window.initialize = function (svgElement, dotNetHelper) {
         }
 
         selectedShape = shape;
-        dotNet.invokeMethodAsync('OnShapeSelected', shape) // Исправлено имя класса
+        dotNet.invokeMethodAsync('OnShapeSelected', shape)
             .catch(error => console.error(error));
     }
 
@@ -244,7 +240,7 @@ window.initialize = function (svgElement, dotNetHelper) {
     }
 
     /**
-     * Очищает выбор и удаляет рамку выделения.
+     * Очищает текущий выбор и удаляет рамку выделения.
      */
     function clearSelection() {
         selectedShape = null;
@@ -263,12 +259,11 @@ window.initialize = function (svgElement, dotNetHelper) {
      * @param {Object} shape - Выбранная фигура.
      */
     function selectShape(shape) {
-        if (isLocked) return; // Предотвращает выбор при блокировке
+        if (isLocked) return;
 
         clearSelection();
         selectedShape = shape;
 
-        // Создаем рамку выделения и сохраняем ссылку на нее
         if (shape.Type === "rect") {
             selectionBox = svg.append("rect")
                 .attr("x", shape.X)
@@ -299,7 +294,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                 .style("stroke-dasharray", "4");
         }
 
-        // Создаем ручки изменения размеров
         createResizeHandles(shape);
     }
 
@@ -337,22 +331,20 @@ window.initialize = function (svgElement, dotNetHelper) {
     };
 
     /**
-     * Устанавливает состояние блокировки.
+     * Устанавливает состояние блокировки для предотвращения взаимодействий.
      * @param {boolean} lockState - true для блокировки, false для разблокировки.
      */
     window.setLock = function (lockState) {
         isLocked = lockState;
 
-        // Визуальная индикация блокировки
         if (isLocked) {
             svg.style("cursor", "not-allowed");
-            svg.style("pointer-events", "none"); // Отключаем взаимодействие
+            svg.style("pointer-events", "none");
         } else {
             svg.style("cursor", "default");
-            svg.style("pointer-events", "all"); // Включаем взаимодействие
+            svg.style("pointer-events", "all");
         }
 
-        // Если заблокировано, очищаем выбор и скрываем контекстное меню
         if (isLocked) {
             clearSelection();
             hideContextMenu();
@@ -360,35 +352,34 @@ window.initialize = function (svgElement, dotNetHelper) {
     };
 
     /**
-     * Обновляет JSON представление фигур.
+     * Обновляет JSON представление фигур и отправляет его в Blazor.
      */
     window.updateJson = function () {
         const json = JSON.stringify(shapes);
-        console.log("Sending JSON to Blazor:", json); // Отладка
+        console.log("Sending JSON to Blazor:", json);
         dotNet.invokeMethodAsync('UpdateJson', json)
             .catch(error => console.error(error));
     };
 
     /**
      * Обработчик события mousedown для SVG.
+     * Начинает процесс рисования новой фигуры или перемещения существующей.
+     * @param {Event} event - Событие мыши.
      */
     svg.on("mousedown", (event) => {
-        if (isLocked) return; // Prevent interactions when locked
-        if (isResizing) return; // Не начинаем рисовать, если происходит изменение размера
+        if (isLocked) return;
+        if (isResizing) return;
 
         event.preventDefault();
 
-        // Левый клик только
         if (event.button !== 0) return;
 
         const [x, y] = d3.pointer(event);
 
-        // Проверяем, был ли клик на существующей фигуре
         const target = event.target;
         const datum = d3.select(target).datum();
 
         if (datum) {
-            // Выбираем фигуру
             selectShape(datum);
             isMoving = true;
             startX = event.clientX;
@@ -396,7 +387,6 @@ window.initialize = function (svgElement, dotNetHelper) {
             return;
         }
 
-        // Начинаем рисовать новую фигуру
         isDrawing = true;
         startX = x;
         startY = y;
@@ -476,9 +466,11 @@ window.initialize = function (svgElement, dotNetHelper) {
 
     /**
      * Обработчик события mousemove для окна.
+     * Управляет процессами рисования, перемещения и изменения размеров фигур.
+     * @param {Event} event - Событие мыши.
      */
     window.addEventListener("mousemove", (event) => {
-        if (isLocked) return; // Prevent interactions when locked
+        if (isLocked) return;
 
         if (isDrawing && currentElement) {
             const [x, y] = d3.pointer(event, svg.node());
@@ -518,7 +510,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                 shape.Y2 = currentY;
             }
 
-            // Обновляем JSON
             updateJson();
         }
 
@@ -535,14 +526,12 @@ window.initialize = function (svgElement, dotNetHelper) {
                     .attr("x", selectedShape.X)
                     .attr("y", selectedShape.Y);
 
-                // Обновляем рамку выделения
                 if (selectionBox) {
                     selectionBox
                         .attr("x", selectedShape.X)
                         .attr("y", selectedShape.Y);
                 }
 
-                // Обновляем ручки
                 updateResizeHandles(selectedShape);
             } else if (selectedShape.Type === "circle") {
                 selectedShape.Cx += dx;
@@ -553,14 +542,12 @@ window.initialize = function (svgElement, dotNetHelper) {
                     .attr("cx", selectedShape.Cx)
                     .attr("cy", selectedShape.Cy);
 
-                // Обновляем рамку выделения
                 if (selectionBox) {
                     selectionBox
                         .attr("cx", selectedShape.Cx)
                         .attr("cy", selectedShape.Cy);
                 }
 
-                // Обновляем ручки
                 updateResizeHandles(selectedShape);
             } else if (selectedShape.Type === "line") {
                 selectedShape.X1 += dx;
@@ -575,7 +562,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                     .attr("x2", selectedShape.X2)
                     .attr("y2", selectedShape.Y2);
 
-                // Обновляем рамку выделения
                 if (selectionBox) {
                     selectionBox
                         .attr("x1", selectedShape.X1)
@@ -584,14 +570,12 @@ window.initialize = function (svgElement, dotNetHelper) {
                         .attr("y2", selectedShape.Y2);
                 }
 
-                // Обновляем ручки
                 updateResizeHandles(selectedShape);
             }
 
             startX = event.clientX;
             startY = event.clientY;
 
-            // Обновляем JSON
             updateJson();
         }
 
@@ -601,29 +585,28 @@ window.initialize = function (svgElement, dotNetHelper) {
 
             if (selectedShape.Type === "rect") {
                 switch (resizeHandleIndex) {
-                    case "0": // Верхний левый угол
+                    case "0":
                         selectedShape.X += dx;
                         selectedShape.Y += dy;
                         selectedShape.Width -= dx;
                         selectedShape.Height -= dy;
                         break;
-                    case "1": // Верхний правый угол
+                    case "1":
                         selectedShape.Y += dy;
                         selectedShape.Width += dx;
                         selectedShape.Height -= dy;
                         break;
-                    case "2": // Нижний левый угол
+                    case "2":
                         selectedShape.X += dx;
                         selectedShape.Width -= dx;
                         selectedShape.Height += dy;
                         break;
-                    case "3": // Нижний правый угол
+                    case "3":
                         selectedShape.Width += dx;
                         selectedShape.Height += dy;
                         break;
                 }
 
-                // Ограничиваем размеры
                 if (selectedShape.Width < 0) {
                     selectedShape.Width = 0;
                 }
@@ -631,7 +614,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                     selectedShape.Height = 0;
                 }
 
-                // Обновляем атрибуты фигуры
                 svg.selectAll("rect")
                     .filter(d => d === selectedShape)
                     .attr("x", selectedShape.X)
@@ -639,7 +621,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                     .attr("width", selectedShape.Width)
                     .attr("height", selectedShape.Height);
 
-                // Обновляем рамку выделения
                 if (selectionBox) {
                     selectionBox
                         .attr("x", selectedShape.X)
@@ -648,7 +629,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                         .attr("height", selectedShape.Height);
                 }
 
-                // Обновляем ручки
                 updateResizeHandles(selectedShape);
             } else if (selectedShape.Type === "circle") {
                 selectedShape.R += dx;
@@ -660,7 +640,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                     .attr("cx", selectedShape.Cx)
                     .attr("cy", selectedShape.Cy);
 
-                // Обновляем рамку выделения
                 if (selectionBox) {
                     selectionBox
                         .attr("r", selectedShape.R + 5)
@@ -668,7 +647,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                         .attr("cy", selectedShape.Cy);
                 }
 
-                // Обновляем ручки
                 updateResizeHandles(selectedShape);
             } else if (selectedShape.Type === "line") {
                 if (resizeHandleIndex === "0") {
@@ -686,7 +664,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                     .attr("x2", selectedShape.X2)
                     .attr("y2", selectedShape.Y2);
 
-                // Обновляем рамку выделения
                 if (selectionBox) {
                     selectionBox
                         .attr("x1", selectedShape.X1)
@@ -695,23 +672,22 @@ window.initialize = function (svgElement, dotNetHelper) {
                         .attr("y2", selectedShape.Y2);
                 }
 
-                // Обновляем ручки
                 updateResizeHandles(selectedShape);
             }
 
             startX = event.clientX;
             startY = event.clientY;
 
-            // Обновляем JSON
             updateJson();
         }
     });
 
     /**
      * Обработчик события mouseup для окна.
+     * Завершает процессы рисования, перемещения или изменения размеров.
      */
     window.addEventListener("mouseup", () => {
-        if (isLocked) return; // Prevent interactions when locked
+        if (isLocked) return;
         if (isDrawing) {
             isDrawing = false;
             updateJson();
@@ -728,9 +704,10 @@ window.initialize = function (svgElement, dotNetHelper) {
 
     /**
      * Обработчик правого клика на фигуре для отображения контекстного меню.
+     * @param {Event} event - Событие мыши.
      */
     svg.on("contextmenu", (event) => {
-        if (isLocked) return; // Prevent context menu when locked
+        if (isLocked) return;
 
         event.preventDefault();
         const [x, y] = d3.pointer(event, window);
