@@ -4,7 +4,7 @@ using Microsoft.JSInterop;
 
 namespace Drawer.Components.Pages;
 
-public partial class Home
+public partial class Home : ComponentBase, IDisposable
 {
     private string SelectedTool { get; set; } = "rect";
 
@@ -16,21 +16,24 @@ public partial class Home
 
     private ElementReference _svgElement;
     private Shape? _selectedShape;
+    private DotNetObjectReference<Home>? _dotNetRef;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await JsRuntime.InvokeVoidAsync("initialize", _svgElement, DotNetObjectReference.Create(this));
-            await UpdateJson();
+            _dotNetRef = DotNetObjectReference.Create(this);
+
+            await JsRuntime.InvokeVoidAsync("initialize", _svgElement, _dotNetRef);
+            await JsRuntime.InvokeVoidAsync("updateJson");
         }
     }
 
     private async Task OnToolChanged(ChangeEventArgs e)
     {
-        SelectedTool = e.Value.ToString();
+        SelectedTool = e.Value?.ToString() ?? "rect";
 
-        if (SelectedTool != null)
+        if (!string.IsNullOrEmpty(SelectedTool))
         {
             await JsRuntime.InvokeVoidAsync("setTool", SelectedTool);
         }
@@ -38,24 +41,23 @@ public partial class Home
 
     private async Task OnLockChanged(ChangeEventArgs e)
     {
-        IsLocked = (bool)e.Value;
-
+        IsLocked = (bool)(e.Value ?? false);
         await JsRuntime.InvokeVoidAsync("setLock", IsLocked);
     }
 
-    [JSInvokable]
-    public async Task OnShapeSelected(Shape shape)
+    public void OnShapeSelected(Shape shape)
     {
         _selectedShape = shape;
-
-        await UpdateJson();
 
         StateHasChanged();
     }
 
-    private async Task UpdateJson()
+    [JSInvokable]
+    public async Task UpdateJson(string json)
     {
-        JsonInput = await JsRuntime.InvokeAsync<string>("getShapes");
+        Console.WriteLine($"Received JSON: {json}");
+        JsonInput = json;
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task DeleteShape()
@@ -63,10 +65,8 @@ public partial class Home
         if (_selectedShape != null)
         {
             await JsRuntime.InvokeVoidAsync("deleteShape", _selectedShape);
-
             _selectedShape = null;
-
-            await UpdateJson();
+            await JsRuntime.InvokeVoidAsync("updateJson");
         }
     }
 
@@ -76,5 +76,10 @@ public partial class Home
         {
             await JsRuntime.InvokeVoidAsync("alert", $"Custom Action for {_selectedShape.Type}");
         }
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
     }
 }
