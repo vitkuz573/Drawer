@@ -137,64 +137,11 @@
                     startX = event.clientX;
                     startY = event.clientY;
                 });
-        } else if (shape.Type === "circle") {
-            svg.append("circle")
-                .attr("cx", shape.Cx + shape.R)
-                .attr("cy", shape.Cy)
-                .attr("r", 4)
-                .attr("class", "resize-handle")
-                .style("fill", "white")
-                .style("stroke", "black")
-                .style("cursor", "ew-resize")
-                .on("mousedown", (event) => {
-                    if (isLocked) return;
-                    event.stopPropagation();
-                    isResizing = true;
-                    resizeHandleIndex = 0;
-                    startX = event.clientX;
-                    startY = event.clientY;
-                });
-        } else if (shape.Type === "line") {
-            const ends = [
-                { x: shape.X1, y: shape.Y1 },
-                { x: shape.X2, y: shape.Y2 }
-            ];
-
-            svg.selectAll(".resize-handle")
-                .data(ends)
-                .enter()
-                .append("circle")
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y)
-                .attr("r", 4)
-                .attr("class", "resize-handle")
-                .attr("data-index", (d, i) => i)
-                .style("fill", "white")
-                .style("stroke", "black")
-                .style("cursor", "ew-resize")
-                .on("mousedown", (event, d) => {
-                    if (isLocked) return;
-                    event.stopPropagation();
-                    isResizing = true;
-                    resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
-                    startX = event.clientX;
-                    startY = event.clientY;
-                });
         }
 
-        if (shape.Type === "rect") {
-            svg.selectAll("rect")
-                .filter(d => d === shape)
-                .classed("selected", true);
-        } else if (shape.Type === "circle") {
-            svg.selectAll("circle")
-                .filter(d => d === shape)
-                .classed("selected", true);
-        } else if (shape.Type === "line") {
-            svg.selectAll("line")
-                .filter(d => d === shape)
-                .classed("selected", true);
-        }
+        svg.selectAll("rect")
+            .filter(d => d === shape)
+            .classed("selected", true);
 
         selectedShape = shape;
         dotNet.invokeMethodAsync('OnShapeSelected', shape)
@@ -220,22 +167,6 @@
                 .data(corners)
                 .attr("x", d => d.x - 4)
                 .attr("y", d => d.y - 4);
-        } else if (shape.Type === "circle") {
-            const handlePos = { x: shape.Cx + shape.R, y: shape.Cy };
-
-            svg.selectAll(".resize-handle")
-                .attr("cx", handlePos.x)
-                .attr("cy", handlePos.y);
-        } else if (shape.Type === "line") {
-            const ends = [
-                { x: shape.X1, y: shape.Y1 },
-                { x: shape.X2, y: shape.Y2 }
-            ];
-
-            svg.selectAll(".resize-handle")
-                .data(ends)
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y);
         }
     }
 
@@ -274,24 +205,6 @@
                 .style("fill", "none")
                 .style("stroke", "blue")
                 .style("stroke-dasharray", "4");
-        } else if (shape.Type === "circle") {
-            selectionBox = svg.append("circle")
-                .attr("cx", shape.Cx)
-                .attr("cy", shape.Cy)
-                .attr("r", shape.R + 5)
-                .attr("class", "selection-box")
-                .style("fill", "none")
-                .style("stroke", "blue")
-                .style("stroke-dasharray", "4");
-        } else if (shape.Type === "line") {
-            selectionBox = svg.append("line")
-                .attr("x1", shape.X1)
-                .attr("y1", shape.Y1)
-                .attr("x2", shape.X2)
-                .attr("y2", shape.Y2)
-                .attr("class", "selection-box")
-                .style("stroke", "blue")
-                .style("stroke-dasharray", "4");
         }
 
         createResizeHandles(shape);
@@ -316,10 +229,12 @@
 
     /**
      * Устанавливает текущий инструмент для рисования.
-     * @param {string} tool - Название инструмента ('rect', 'circle', 'line').
+     * @param {string} tool - Название инструмента ('rect').
      */
     window.setTool = function (tool) {
-        currentTool = tool;
+        if (tool === "rect") {
+            currentTool = tool;
+        }
     };
 
     /**
@@ -415,49 +330,6 @@
                 .on("click", () => {
                     selectShape(newShape);
                 });
-        } else if (currentTool === "circle") {
-            newShape = {
-                Type: "circle",
-                Cx: x,
-                Cy: y,
-                R: 0,
-                Fill: currentColor,
-                Stroke: currentColor,
-                StrokeWidth: 2
-            };
-            currentElement = svg.append("circle")
-                .attr("cx", x)
-                .attr("cy", y)
-                .attr("r", 0)
-                .attr("fill", currentColor)
-                .attr("stroke", currentColor)
-                .attr("stroke-width", 2)
-                .attr("opacity", 0.8)
-                .on("click", () => {
-                    selectShape(newShape);
-                });
-        } else if (currentTool === "line") {
-            newShape = {
-                Type: "line",
-                X1: x,
-                Y1: y,
-                X2: x,
-                Y2: y,
-                Fill: currentColor,
-                Stroke: currentColor,
-                StrokeWidth: 2
-            };
-            currentElement = svg.append("line")
-                .attr("x1", x)
-                .attr("y1", y)
-                .attr("x2", x)
-                .attr("y2", y)
-                .attr("stroke", currentColor)
-                .attr("stroke-width", 2)
-                .attr("opacity", 0.8)
-                .on("click", () => {
-                    selectShape(newShape);
-                });
         }
 
         shapes.push(newShape);
@@ -466,7 +338,7 @@
 
     /**
      * Обработчик события mousemove для окна.
-     * Управляет процессами рисования, перемещения и изменения размеров фигур.
+     * Управляет процессами рисования и перемещения фигур.
      * @param {Event} event - Событие мыши.
      */
     window.addEventListener("mousemove", (event) => {
@@ -490,24 +362,6 @@
                 const shape = currentElement.datum();
                 shape.Width = width;
                 shape.Height = height;
-            } else if (currentTool === "circle") {
-                const dx = currentX - startX;
-                const dy = currentY - startY;
-                const r = Math.sqrt(dx * dx + dy * dy);
-
-                currentElement
-                    .attr("r", r);
-
-                const shape = currentElement.datum();
-                shape.R = r;
-            } else if (currentTool === "line") {
-                currentElement
-                    .attr("x2", currentX)
-                    .attr("y2", currentY);
-
-                const shape = currentElement.datum();
-                shape.X2 = currentX;
-                shape.Y2 = currentY;
             }
 
             updateJson();
@@ -530,44 +384,6 @@
                     selectionBox
                         .attr("x", selectedShape.X)
                         .attr("y", selectedShape.Y);
-                }
-
-                updateResizeHandles(selectedShape);
-            } else if (selectedShape.Type === "circle") {
-                selectedShape.Cx += dx;
-                selectedShape.Cy += dy;
-
-                svg.selectAll("circle")
-                    .filter(d => d === selectedShape)
-                    .attr("cx", selectedShape.Cx)
-                    .attr("cy", selectedShape.Cy);
-
-                if (selectionBox) {
-                    selectionBox
-                        .attr("cx", selectedShape.Cx)
-                        .attr("cy", selectedShape.Cy);
-                }
-
-                updateResizeHandles(selectedShape);
-            } else if (selectedShape.Type === "line") {
-                selectedShape.X1 += dx;
-                selectedShape.Y1 += dy;
-                selectedShape.X2 += dx;
-                selectedShape.Y2 += dy;
-
-                svg.selectAll("line")
-                    .filter(d => d === selectedShape)
-                    .attr("x1", selectedShape.X1)
-                    .attr("y1", selectedShape.Y1)
-                    .attr("x2", selectedShape.X2)
-                    .attr("y2", selectedShape.Y2);
-
-                if (selectionBox) {
-                    selectionBox
-                        .attr("x1", selectedShape.X1)
-                        .attr("y1", selectedShape.Y1)
-                        .attr("x2", selectedShape.X2)
-                        .attr("y2", selectedShape.Y2);
                 }
 
                 updateResizeHandles(selectedShape);
@@ -630,49 +446,6 @@
                 }
 
                 updateResizeHandles(selectedShape);
-            } else if (selectedShape.Type === "circle") {
-                selectedShape.R += dx;
-                if (selectedShape.R < 0) selectedShape.R = 0;
-
-                svg.selectAll("circle")
-                    .filter(d => d === selectedShape)
-                    .attr("r", selectedShape.R)
-                    .attr("cx", selectedShape.Cx)
-                    .attr("cy", selectedShape.Cy);
-
-                if (selectionBox) {
-                    selectionBox
-                        .attr("r", selectedShape.R + 5)
-                        .attr("cx", selectedShape.Cx)
-                        .attr("cy", selectedShape.Cy);
-                }
-
-                updateResizeHandles(selectedShape);
-            } else if (selectedShape.Type === "line") {
-                if (resizeHandleIndex === "0") {
-                    selectedShape.X1 += dx;
-                    selectedShape.Y1 += dy;
-                } else if (resizeHandleIndex === "1") {
-                    selectedShape.X2 += dx;
-                    selectedShape.Y2 += dy;
-                }
-
-                svg.selectAll("line")
-                    .filter(d => d === selectedShape)
-                    .attr("x1", selectedShape.X1)
-                    .attr("y1", selectedShape.Y1)
-                    .attr("x2", selectedShape.X2)
-                    .attr("y2", selectedShape.Y2);
-
-                if (selectionBox) {
-                    selectionBox
-                        .attr("x1", selectedShape.X1)
-                        .attr("y1", selectedShape.Y1)
-                        .attr("x2", selectedShape.X2)
-                        .attr("y2", selectedShape.Y2);
-                }
-
-                updateResizeHandles(selectedShape);
             }
 
             startX = event.clientX;
@@ -714,7 +487,7 @@
         const target = event.target;
         const datum = d3.select(target).datum();
 
-        if (datum) {
+        if (datum && datum.Type === "rect") {
             selectShape(datum);
             showContextMenu(event.clientX, event.clientY);
         } else {
