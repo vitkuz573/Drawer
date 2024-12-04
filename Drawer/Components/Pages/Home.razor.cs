@@ -64,6 +64,32 @@ public partial class Home : ComponentBase, IDisposable
         await JsRuntime.InvokeVoidAsync("setLock", IsLocked);
     }
 
+    private async Task OnJsonInputChanged(ChangeEventArgs e)
+    {
+        JsonInput = e.Value?.ToString() ?? "[]";
+
+        try
+        {
+            var shapes = JsonSerializer.Deserialize<List<Shape>>(JsonInput, new JsonSerializerOptions
+            {
+                Converters = { new ShapeJsonConverter() },
+                PropertyNameCaseInsensitive = true
+            }) ?? new List<Shape>();
+
+            // Обновляем внутреннее состояние Shapes
+            Shapes = shapes;
+
+            // Отправляем обновленный JSON в JavaScript для обновления SVG
+            await JsRuntime.InvokeVoidAsync("updateShapesFromJson", JsonInput);
+        }
+        catch (JsonException ex)
+        {
+            // Обработка ошибок парсинга JSON
+            Console.Error.WriteLine($"Invalid JSON: {ex.Message}");
+            // Здесь можно добавить уведомление пользователя об ошибке
+        }
+    }
+
     [JSInvokable]
     public async Task UpdateJson(string json)
     {

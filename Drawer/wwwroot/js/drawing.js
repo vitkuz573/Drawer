@@ -564,6 +564,59 @@
     };
 
     /**
+ * Обновляет SVG на основе переданного JSON.
+ * @param {string} json - JSON строка с фигурами.
+ */
+    window.updateShapesFromJson = function (json) {
+        try {
+            const shapesData = JSON.parse(json);
+            if (!Array.isArray(shapesData)) {
+                console.error("updateShapesFromJson: JSON is not an array.");
+                return;
+            }
+
+            // Удаляем существующие фигуры
+            shapes.forEach(shape => {
+                const config = shapeConfigs[shape.Type];
+                if (config) {
+                    svg.selectAll(`[data-id='${shape.id}']`).remove();
+                }
+            });
+            shapes = []; // Сбрасываем массив фигур
+
+            // Создаём фигуры из полученного JSON
+            shapesData.forEach(shapeData => {
+                const config = shapeConfigs[shapeData.Type];
+                if (config) {
+                    const newShape = config.createShape(
+                        shapeData.id,
+                        shapeData.x !== undefined ? shapeData.x : (shapeData.cx || 0),
+                        shapeData.y !== undefined ? shapeData.y : (shapeData.cy || 0),
+                        shapeData.fill || config.defaultProps.fill
+                    );
+
+                    // Присваиваем остальные свойства фигуры
+                    Object.assign(newShape, shapeData);
+
+                    // Создаём SVG-элемент
+                    newShape.element = config.createElement(svg, newShape);
+
+                    // Добавляем фигуру в массив
+                    shapes.push(newShape);
+                } else {
+                    console.warn(`updateShapesFromJson: Unsupported shape type '${shapeData.Type}'`);
+                }
+            });
+
+            // Обновляем выделение и ручки, если необходимо
+            clearSelection();
+            // Не вызываем updateJson, чтобы избежать циклических обновлений
+        } catch (error) {
+            console.error("updateShapesFromJson: Error parsing JSON", error);
+        }
+    };
+
+    /**
      * Обновляет JSON представление фигур и отправляет его в Blazor.
      */
     window.updateJson = function () {
@@ -574,6 +627,7 @@
         });
         const json = JSON.stringify(dataOnlyShapes);
         console.log(`updateJson: Sending JSON data = ${json}`);
+
         dotNet.invokeMethodAsync('UpdateJson', json)
             .catch(error => console.error("updateJson Invoke error:", error));
     };

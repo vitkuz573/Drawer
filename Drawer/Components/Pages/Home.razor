@@ -36,7 +36,7 @@
 </div>
 
 <div class="flex w-96 flex-col space-y-2">
-    <textarea @bind="JsonInput" class="h-64 w-full rounded border border-gray-300 p-2 shadow-sm" placeholder="Редактируйте или вставьте JSON здесь"></textarea>
+    <textarea @bind="JsonInput" @oninput="OnJsonInputChanged" class="h-64 w-full rounded border border-gray-300 p-2 shadow-sm" placeholder="Редактируйте или вставьте JSON здесь"></textarea>
 </div>
 
 <style>
