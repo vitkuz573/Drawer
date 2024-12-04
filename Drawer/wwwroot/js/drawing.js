@@ -1,9 +1,10 @@
 ﻿window.initialize = function (svgElement, dotNetHelper) {
-    const svg = d3.select(svgElement)
-        .attr("width", 800)
-        .attr("height", 600)
-        .style("border", "1px solid #ccc")
-        .style("background-color", "#fff");
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = svgElement;
+    svg.setAttribute("width", 800);
+    svg.setAttribute("height", 600);
+    svg.style.border = "1px solid #ccc";
+    svg.style.backgroundColor = "#fff";
 
     let shapes = [];
     let selectedShape = null;
@@ -28,7 +29,7 @@
         }
 
         const target = event.target;
-        const isShape = d3.select(target).datum() && d3.select(target).datum().id;
+        const isShape = target.getAttribute('data-id') !== null;
         const isResizeHandle = target.classList.contains('resize-handle');
 
         if (!isShape && !isResizeHandle && !_isClickInsideContextMenu(event)) {
@@ -52,12 +53,11 @@
      * @returns {string} - Уникальный идентификатор.
      */
     function generateUniqueId() {
-        return 'shape-' + Math.random().toString(36).slice(2, 11);
+        return 'shape-' + Math.random().toString(36).substr(2, 9);
     }
 
     /**
      * Конфигурационный объект для всех типов фигур.
-     * Добавление нового типа фигуры требует добавления новой записи здесь.
      */
     const shapeConfigs = {
         rect: {
@@ -86,42 +86,42 @@
             /**
              * Создаёт SVG элемент для прямоугольника.
              */
-            createElement: (svg, shape) => {
-                return svg.append('rect')
-                    .attr('x', shape.x)
-                    .attr('y', shape.y)
-                    .attr('width', shape.width)
-                    .attr('height', shape.height)
-                    .attr('fill', shape.fill)
-                    .attr('stroke', shape.stroke)
-                    .attr('stroke-width', shape.strokeWidth)
-                    .attr('opacity', shape.opacity)
-                    .attr('data-id', shape.id)
-                    .datum(shape);
+            createElement: (shape) => {
+                const rect = document.createElementNS(svgNS, 'rect');
+                rect.setAttribute('x', shape.x);
+                rect.setAttribute('y', shape.y);
+                rect.setAttribute('width', shape.width);
+                rect.setAttribute('height', shape.height);
+                rect.setAttribute('fill', shape.fill);
+                rect.setAttribute('stroke', shape.stroke);
+                rect.setAttribute('stroke-width', shape.strokeWidth);
+                rect.setAttribute('opacity', shape.opacity);
+                rect.setAttribute('data-id', shape.id);
+                svg.appendChild(rect);
+                return rect;
             },
             /**
              * Обновляет свойства SVG элемента прямоугольника.
              */
             updateElement: (element, shape) => {
-                element
-                    .attr('x', shape.x)
-                    .attr('y', shape.y)
-                    .attr('width', shape.width)
-                    .attr('height', shape.height)
-                    .attr('fill', shape.fill)
-                    .attr('stroke', shape.stroke)
-                    .attr('stroke-width', shape.strokeWidth)
-                    .attr('opacity', shape.opacity);
+                element.setAttribute('x', shape.x);
+                element.setAttribute('y', shape.y);
+                element.setAttribute('width', shape.width);
+                element.setAttribute('height', shape.height);
+                element.setAttribute('fill', shape.fill);
+                element.setAttribute('stroke', shape.stroke);
+                element.setAttribute('stroke-width', shape.strokeWidth);
+                element.setAttribute('opacity', shape.opacity);
             },
             /**
              * Возвращает позиции ручек изменения размера для прямоугольника.
              */
-            getResizeHandles: (shape) => [
+            getResizeHandles: (shape) => ([
                 { x: shape.x, y: shape.y },
                 { x: shape.x + shape.width, y: shape.y },
                 { x: shape.x, y: shape.y + shape.height },
                 { x: shape.x + shape.width, y: shape.y + shape.height }
-            ],
+            ]),
             /**
              * Обновляет свойства прямоугольника при изменении размеров.
              */
@@ -185,25 +185,26 @@
              * Обновляет рамку выделения для прямоугольника.
              */
             updateSelectionBox: (selectionBox, shape) => {
-                selectionBox
-                    .attr("x", shape.x)
-                    .attr("y", shape.y)
-                    .attr("width", shape.width)
-                    .attr("height", shape.height);
+                selectionBox.setAttribute("x", shape.x);
+                selectionBox.setAttribute("y", shape.y);
+                selectionBox.setAttribute("width", shape.width);
+                selectionBox.setAttribute("height", shape.height);
             },
             /**
              * Создаёт рамку выделения для прямоугольника.
              */
-            createSelectionBox: (svg, shape) => {
-                return svg.append("rect")
-                    .attr("x", shape.x)
-                    .attr("y", shape.y)
-                    .attr("width", shape.width)
-                    .attr("height", shape.height)
-                    .attr("class", "selection-box")
-                    .style("fill", "none")
-                    .style("stroke", "blue")
-                    .style("stroke-dasharray", "4");
+            createSelectionBox: (shape) => {
+                const box = document.createElementNS(svgNS, 'rect');
+                box.setAttribute("x", shape.x);
+                box.setAttribute("y", shape.y);
+                box.setAttribute("width", shape.width);
+                box.setAttribute("height", shape.height);
+                box.setAttribute("class", "selection-box");
+                box.style.fill = "none";
+                box.style.stroke = "blue";
+                box.style.strokeDasharray = "4";
+                svg.appendChild(box);
+                return box;
             }
         },
         circle: {
@@ -231,40 +232,40 @@
             /**
              * Создаёт SVG элемент для круга.
              */
-            createElement: (svg, shape) => {
-                return svg.append('circle')
-                    .attr('cx', shape.cx)
-                    .attr('cy', shape.cy)
-                    .attr('r', shape.r)
-                    .attr('fill', shape.fill)
-                    .attr('stroke', shape.stroke)
-                    .attr('stroke-width', shape.strokeWidth)
-                    .attr('opacity', shape.opacity)
-                    .attr('data-id', shape.id)
-                    .datum(shape);
+            createElement: (shape) => {
+                const circle = document.createElementNS(svgNS, 'circle');
+                circle.setAttribute('cx', shape.cx);
+                circle.setAttribute('cy', shape.cy);
+                circle.setAttribute('r', shape.r);
+                circle.setAttribute('fill', shape.fill);
+                circle.setAttribute('stroke', shape.stroke);
+                circle.setAttribute('stroke-width', shape.strokeWidth);
+                circle.setAttribute('opacity', shape.opacity);
+                circle.setAttribute('data-id', shape.id);
+                svg.appendChild(circle);
+                return circle;
             },
             /**
              * Обновляет свойства SVG элемента круга.
              */
             updateElement: (element, shape) => {
-                element
-                    .attr('cx', shape.cx)
-                    .attr('cy', shape.cy)
-                    .attr('r', shape.r)
-                    .attr('fill', shape.fill)
-                    .attr('stroke', shape.stroke)
-                    .attr('stroke-width', shape.strokeWidth)
-                    .attr('opacity', shape.opacity);
+                element.setAttribute('cx', shape.cx);
+                element.setAttribute('cy', shape.cy);
+                element.setAttribute('r', shape.r);
+                element.setAttribute('fill', shape.fill);
+                element.setAttribute('stroke', shape.stroke);
+                element.setAttribute('stroke-width', shape.strokeWidth);
+                element.setAttribute('opacity', shape.opacity);
             },
             /**
              * Возвращает позиции ручек изменения размера для круга.
              */
-            getResizeHandles: (shape) => [
+            getResizeHandles: (shape) => ([
                 { x: shape.cx + shape.r, y: shape.cy },
                 { x: shape.cx - shape.r, y: shape.cy },
                 { x: shape.cx, y: shape.cy + shape.r },
                 { x: shape.cx, y: shape.cy - shape.r }
-            ],
+            ]),
             /**
              * Обновляет свойства круга при изменении размеров.
              */
@@ -296,23 +297,24 @@
              * Обновляет рамку выделения для круга.
              */
             updateSelectionBox: (selectionBox, shape) => {
-                selectionBox
-                    .attr("cx", shape.cx)
-                    .attr("cy", shape.cy)
-                    .attr("r", shape.r);
+                selectionBox.setAttribute("cx", shape.cx);
+                selectionBox.setAttribute("cy", shape.cy);
+                selectionBox.setAttribute("r", shape.r);
             },
             /**
              * Создаёт рамку выделения для круга.
              */
-            createSelectionBox: (svg, shape) => {
-                return svg.append("circle")
-                    .attr("cx", shape.cx)
-                    .attr("cy", shape.cy)
-                    .attr("r", shape.r)
-                    .attr("class", "selection-box")
-                    .style("fill", "none")
-                    .style("stroke", "blue")
-                    .style("stroke-dasharray", "4");
+            createSelectionBox: (shape) => {
+                const box = document.createElementNS(svgNS, 'circle');
+                box.setAttribute("cx", shape.cx);
+                box.setAttribute("cy", shape.cy);
+                box.setAttribute("r", shape.r);
+                box.setAttribute("class", "selection-box");
+                box.style.fill = "none";
+                box.style.stroke = "blue";
+                box.style.strokeDasharray = "4";
+                svg.appendChild(box);
+                return box;
             }
         }
     };
@@ -322,7 +324,7 @@
      * @param {Object} shape - Выбранная фигура.
      */
     function createResizeHandles(shape) {
-        svg.selectAll(".resize-handle").remove();
+        removeResizeHandles();
 
         if (!shape) return;
 
@@ -331,58 +333,53 @@
 
         const handles = config.getResizeHandles(shape);
 
-        if (config.tag === 'circle') {
-            svg.selectAll(".resize-handle")
-                .data(handles)
-                .enter()
-                .append("circle")
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y)
-                .attr("r", 6)
-                .attr("class", "resize-handle")
-                .attr("data-index", (d, i) => i)
-                .style("fill", "white")
-                .style("stroke", "black")
-                .style("cursor", "nwse-resize")
-                .on("mousedown", (event, d) => {
-                    if (isLocked) return;
-                    event.stopPropagation();
-                    isResizing = true;
-                    resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
-                    const [x, y] = d3.pointer(event, svg.node());
-                    startX = x;
-                    startY = y;
-                });
-        } else {
-            svg.selectAll(".resize-handle")
-                .data(handles)
-                .enter()
-                .append("rect")
-                .attr("x", d => d.x - 4)
-                .attr("y", d => d.y - 4)
-                .attr("width", 8)
-                .attr("height", 8)
-                .attr("class", "resize-handle")
-                .attr("data-index", (d, i) => i)
-                .style("fill", "white")
-                .style("stroke", "black")
-                .style("cursor", "nwse-resize")
-                .on("mousedown", (event, d) => {
-                    if (isLocked) return;
-                    event.stopPropagation();
-                    isResizing = true;
-                    resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
-                    const [x, y] = d3.pointer(event, svg.node());
-                    startX = x;
-                    startY = y;
-                });
-        }
+        handles.forEach((handle, index) => {
+            let handleElement;
+            if (config.tag === 'circle') {
+                handleElement = document.createElementNS(svgNS, 'circle');
+                handleElement.setAttribute('cx', handle.x);
+                handleElement.setAttribute('cy', handle.y);
+                handleElement.setAttribute('r', 6);
+            } else {
+                handleElement = document.createElementNS(svgNS, 'rect');
+                handleElement.setAttribute('x', handle.x - 4);
+                handleElement.setAttribute('y', handle.y - 4);
+                handleElement.setAttribute('width', 8);
+                handleElement.setAttribute('height', 8);
+            }
+            handleElement.classList.add('resize-handle');
+            handleElement.setAttribute('data-index', index.toString());
+            handleElement.style.fill = "white";
+            handleElement.style.stroke = "black";
+            handleElement.style.cursor = "nwse-resize";
+            handleElement.style.pointerEvents = "all";
 
-        svg.selectAll(`${config.tag}`)
-            .filter(d => d && d.id === shape.id)
-            .classed("selected", true);
+            handleElement.addEventListener('mousedown', (event) => {
+                if (isLocked) return;
+                event.stopPropagation();
+                isResizing = true;
+                resizeHandleIndex = event.currentTarget.getAttribute('data-index');
+                const rect = svg.getBoundingClientRect();
+                startX = event.clientX - rect.left;
+                startY = event.clientY - rect.top;
+            });
+
+            svg.appendChild(handleElement);
+        });
+
+        // Добавляем класс 'selected' к фигуре
+        const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
+        shapeElements.forEach(el => el.classList.add("selected"));
 
         selectedShape = shape;
+    }
+
+    /**
+     * Удаляет все существующие ручки изменения размера.
+     */
+    function removeResizeHandles() {
+        const handles = svg.querySelectorAll('.resize-handle');
+        handles.forEach(handle => handle.remove());
     }
 
     /**
@@ -396,18 +393,18 @@
         if (!config) return;
 
         const handles = config.getResizeHandles(shape);
+        const handleElements = svg.querySelectorAll('.resize-handle');
 
-        if (config.tag === 'circle') {
-            svg.selectAll(".resize-handle")
-                .data(handles)
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y);
-        } else {
-            svg.selectAll(".resize-handle")
-                .data(handles)
-                .attr("x", d => d.x - 4)
-                .attr("y", d => d.y - 4);
-        }
+        handleElements.forEach((handleElement, index) => {
+            const handle = handles[index];
+            if (config.tag === 'circle') {
+                handleElement.setAttribute('cx', handle.x);
+                handleElement.setAttribute('cy', handle.y);
+            } else {
+                handleElement.setAttribute('x', handle.x - 4);
+                handleElement.setAttribute('y', handle.y - 4);
+            }
+        });
     }
 
     /**
@@ -419,9 +416,12 @@
             selectionBox.remove();
             selectionBox = null;
         }
-        svg.selectAll(".resize-handle").remove();
-        svg.selectAll(Object.keys(shapeConfigs).map(type => shapeConfigs[type].tag).join(', '))
-            .classed("selected", false);
+        removeResizeHandles();
+        // Удаляем класс 'selected' у всех фигур
+        shapes.forEach(shape => {
+            const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
+            shapeElements.forEach(el => el.classList.remove("selected"));
+        });
 
         const dataOnlyShapes = shapes.map(shape => {
             const { element, ...data } = shape;
@@ -444,7 +444,7 @@
         const config = shapeConfigs[shape.Type];
         if (!config) return;
 
-        selectionBox = config.createSelectionBox(svg, shape);
+        selectionBox = config.createSelectionBox(shape);
 
         createResizeHandles(shape);
     }
@@ -469,9 +469,8 @@
             return;
         }
 
-        svg.selectAll(config.tag)
-            .filter(d => d && d.id === shape.id)
-            .remove();
+        const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
+        shapeElements.forEach(el => el.remove());
 
         shapes.splice(shapeIndex, 1);
         clearSelection();
@@ -486,7 +485,7 @@
         currentColor = color;
 
         if (currentElement) {
-            const shapeId = currentElement.attr('data-id');
+            const shapeId = currentElement.getAttribute('data-id');
             const shape = shapes.find(s => s.id === shapeId);
             if (shape) {
                 if (shapeConfigs[shape.Type].defaultProps.fill) {
@@ -529,11 +528,11 @@
         isLocked = lockState;
 
         if (isLocked) {
-            svg.style("cursor", "not-allowed");
-            svg.style("pointer-events", "none");
+            svg.style.cursor = "not-allowed";
+            svg.style.pointerEvents = "none";
         } else {
-            svg.style("cursor", "default");
-            svg.style("pointer-events", "all");
+            svg.style.cursor = "default";
+            svg.style.pointerEvents = "all";
         }
 
         if (isLocked) {
@@ -552,14 +551,17 @@
                 return;
             }
 
+            // Удаляем существующие фигуры из SVG
             shapes.forEach(shape => {
                 const config = shapeConfigs[shape.Type];
                 if (config) {
-                    svg.selectAll(`[data-id='${shape.id}']`).remove();
+                    const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
+                    shapeElements.forEach(el => el.remove());
                 }
             });
             shapes = [];
 
+            // Добавляем новые фигуры из JSON
             shapesData.forEach(shapeData => {
                 const config = shapeConfigs[shapeData.Type];
                 if (config) {
@@ -572,14 +574,16 @@
 
                     Object.assign(newShape, shapeData);
 
-                    newShape.element = config.createElement(svg, newShape);
+                    newShape.element = config.createElement(newShape);
 
                     shapes.push(newShape);
                 }
             });
 
             clearSelection();
-        } catch (error) { }
+        } catch (error) {
+            console.error("Не удалось обновить фигуры из JSON:", error);
+        }
     };
 
     /**
@@ -595,21 +599,26 @@
         dotNet.invokeMethodAsync('UpdateJson', json);
     };
 
-    svg.on("mousedown", (event) => {
+    /**
+     * Обрабатывает событие mousedown на SVG.
+     */
+    svg.addEventListener("mousedown", (event) => {
         if (isLocked) return;
         if (isResizing) return;
 
         event.preventDefault();
 
-        if (event.button !== 0) return;
+        if (event.button !== 0) return; // Реагируем только на левый клик
 
-        const [x, y] = d3.pointer(event, svg.node());
+        const rect = svg.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
 
         const target = event.target;
-        const datum = d3.select(target).datum();
+        const shapeId = target.getAttribute('data-id');
 
-        if (datum && datum.id) {
-            const shape = shapes.find(s => s.id === datum.id);
+        if (shapeId) {
+            const shape = shapes.find(s => s.id === shapeId);
             if (shape) {
                 selectShape(shape);
                 isMoving = true;
@@ -629,14 +638,19 @@
         const newShape = shapeConfigs[currentTool].createShape(id, x, y, currentColor);
         shapes.push(newShape);
 
-        newShape.element = shapeConfigs[currentTool].createElement(svg, newShape);
+        newShape.element = shapeConfigs[currentTool].createElement(newShape);
         currentElement = newShape.element;
     });
 
+    /**
+     * Обрабатывает событие mousemove глобально.
+     */
     window.addEventListener("mousemove", (event) => {
         if (isLocked) return;
 
-        const [currentX, currentY] = d3.pointer(event, svg.node());
+        const rect = svg.getBoundingClientRect();
+        const currentX = event.clientX - rect.left;
+        const currentY = event.clientY - rect.top;
 
         if (isDrawing && currentElement) {
             const shape = shapes[shapes.length - 1];
@@ -677,8 +691,6 @@
         }
 
         if (isResizing && selectedShape) {
-            const [currentX, currentY] = d3.pointer(event, svg.node());
-
             const config = shapeConfigs[selectedShape.Type];
             if (!config) {
                 return;
@@ -707,6 +719,9 @@
         }
     });
 
+    /**
+     * Обрабатывает событие mouseup глобально.
+     */
     window.addEventListener("mouseup", () => {
         if (isLocked) return;
 
@@ -752,21 +767,23 @@
         }
     });
 
-    svg.on("contextmenu", (event) => {
+    /**
+     * Обрабатывает событие contextmenu (правый клик) на SVG.
+     */
+    svg.addEventListener("contextmenu", (event) => {
         if (isLocked) return;
 
         event.preventDefault();
 
-        const containerRect = svgElement.parentElement.getBoundingClientRect();
-
-        const x = event.clientX - containerRect.left;
-        const y = event.clientY - containerRect.top;
+        const rect = svg.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
 
         const target = event.target;
-        const datum = d3.select(target).datum();
+        const shapeId = target.getAttribute('data-id');
 
-        if (datum && datum.id) {
-            const shape = shapes.find(s => s.id === datum.id);
+        if (shapeId) {
+            const shape = shapes.find(s => s.id === shapeId);
             if (shape) {
                 selectShape(shape);
                 dotNet.invokeMethodAsync('OnShapeRightClicked', x, y, shape.id);
