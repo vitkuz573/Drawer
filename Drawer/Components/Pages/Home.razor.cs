@@ -39,9 +39,20 @@ public partial class Home : ComponentBase, IDisposable
         }
     }
 
+    private async Task OnColorChanged(ChangeEventArgs e)
+    {
+        SelectedColor = e.Value?.ToString() ?? "#0000ff";
+
+        if (!string.IsNullOrEmpty(SelectedColor))
+        {
+            await JsRuntime.InvokeVoidAsync("setColor", SelectedColor);
+        }
+    }
+
     private async Task OnLockChanged(ChangeEventArgs e)
     {
         IsLocked = (bool)(e.Value ?? false);
+
         await JsRuntime.InvokeVoidAsync("setLock", IsLocked);
     }
 

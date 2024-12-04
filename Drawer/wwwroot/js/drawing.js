@@ -228,6 +228,18 @@
     }
 
     /**
+     * Устанавливает текущий цвет для рисования
+     * @param {string} color - Код цвета
+     */
+    window.setColor = function (color) {
+        currentColor = color;
+
+        if (currentElement) {
+            currentElement.attr("fill", currentColor).attr("stroke", currentColor);
+        }
+    };
+
+    /**
      * Устанавливает текущий инструмент для рисования.
      * @param {string} tool - Название инструмента ('rect').
      */

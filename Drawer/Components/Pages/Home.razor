@@ -11,7 +11,7 @@
         <select @onchange="OnToolChanged" class="rounded border border-gray-300 p-2 shadow-sm">
             <option value="rect">Rectangle</option>
         </select>
-        <input type="color" @bind="SelectedColor" class="h-8 w-12 rounded border border-gray-300 p-1 shadow-sm" />
+        <input type="color" value="@SelectedColor" @onchange="OnColorChanged" class="h-8 w-12 rounded border border-gray-300 p-1 shadow-sm" />
         <label class="flex items-center space-x-2">
             <input type="checkbox" checked="@IsLocked" @onchange="OnLockChanged" class="rounded border-gray-300">
             <span>Lock</span>
