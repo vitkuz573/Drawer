@@ -220,27 +220,6 @@
              */
             shouldRemove: (shape) => {
                 return shape.width === 0 || shape.height === 0;
-            },
-            /**
-             * Создаёт элемент ручки изменения размера.
-             * @param {Object} handle - Объект с координатами ручки.
-             * @param {number} index - Индекс ручки.
-             * @returns {SVGElement} - Созданный элемент ручки.
-             */
-            createResizeHandleElement: (handle, index) => {
-                const handleElement = document.createElementNS(svgNS, 'rect');
-                handleElement.setAttribute('x', handle.x - 4);
-                handleElement.setAttribute('y', handle.y - 4);
-                handleElement.setAttribute('width', 8);
-                handleElement.setAttribute('height', 8);
-                handleElement.classList.add('resize-handle');
-                handleElement.setAttribute('data-index', index.toString());
-                handleElement.style.fill = "white";
-                handleElement.style.stroke = "black";
-                handleElement.style.cursor = "nwse-resize";
-                handleElement.style.pointerEvents = "all";
-
-                return handleElement;
             }
         },
         circle: {
@@ -366,34 +345,14 @@
              */
             shouldRemove: (shape) => {
                 return shape.r === 0;
-            },
-            /**
-             * Создаёт элемент ручки изменения размера.
-             * @param {Object} handle - Объект с координатами ручки.
-             * @param {number} index - Индекс ручки.
-             * @returns {SVGElement} - Созданный элемент ручки.
-             */
-            createResizeHandleElement: (handle, index) => {
-                const handleElement = document.createElementNS(svgNS, 'circle');
-                handleElement.setAttribute('cx', handle.x);
-                handleElement.setAttribute('cy', handle.y);
-                handleElement.setAttribute('r', 6);
-                handleElement.classList.add('resize-handle');
-                handleElement.setAttribute('data-index', index.toString());
-                handleElement.style.fill = "white";
-                handleElement.style.stroke = "black";
-                handleElement.style.cursor = "nwse-resize";
-                handleElement.style.pointerEvents = "all";
-
-                return handleElement;
             }
         }
     };
 
     /**
-    * Создаёт ручки для изменения размеров выбранной фигуры.
-    * @param {Object} shape - Выбранная фигура.
-    */
+     * Создаёт ручки для изменения размеров выбранной фигуры.
+     * @param {Object} shape - Выбранная фигура.
+     */
     function createResizeHandles(shape) {
         removeResizeHandles();
 
@@ -405,7 +364,25 @@
         const handles = config.getResizeHandles(shape);
 
         handles.forEach((handle, index) => {
-            const handleElement = config.createResizeHandleElement(handle, index);
+            let handleElement;
+            if (config.tag === 'circle') {
+                handleElement = document.createElementNS(svgNS, 'circle');
+                handleElement.setAttribute('cx', handle.x);
+                handleElement.setAttribute('cy', handle.y);
+                handleElement.setAttribute('r', 6);
+            } else {
+                handleElement = document.createElementNS(svgNS, 'rect');
+                handleElement.setAttribute('x', handle.x - 4);
+                handleElement.setAttribute('y', handle.y - 4);
+                handleElement.setAttribute('width', 8);
+                handleElement.setAttribute('height', 8);
+            }
+            handleElement.classList.add('resize-handle');
+            handleElement.setAttribute('data-index', index.toString());
+            handleElement.style.fill = "white";
+            handleElement.style.stroke = "black";
+            handleElement.style.cursor = "nwse-resize";
+            handleElement.style.pointerEvents = "all";
 
             handleElement.addEventListener('mousedown', (event) => {
                 if (isLocked) return;
@@ -432,6 +409,31 @@
     function removeResizeHandles() {
         const handles = svg.querySelectorAll('.resize-handle');
         handles.forEach(handle => handle.remove());
+    }
+
+    /**
+     * Обновляет позиции ручек изменения размеров выбранной фигуры.
+     * @param {Object} shape - Выбранная фигура.
+     */
+    function updateResizeHandles(shape) {
+        if (!shape || !selectionBox) return;
+
+        const config = shapeConfigs[shape.type];
+        if (!config) return;
+
+        const handles = config.getResizeHandles(shape);
+        const handleElements = svg.querySelectorAll('.resize-handle');
+
+        handleElements.forEach((handleElement, index) => {
+            const handle = handles[index];
+            if (config.tag === 'circle') {
+                handleElement.setAttribute('cx', handle.x);
+                handleElement.setAttribute('cy', handle.y);
+            } else {
+                handleElement.setAttribute('x', handle.x - 4);
+                handleElement.setAttribute('y', handle.y - 4);
+            }
+        });
     }
 
     /**
@@ -704,7 +706,7 @@
                 config.updateSelectionBox(selectionBox, selectedShape);
             }
 
-            createResizeHandles(selectedShape);
+            updateResizeHandles(selectedShape);
 
             startX = currentX;
             startY = currentY;
@@ -718,7 +720,13 @@
                 return;
             }
 
-            config.resize(selectedShape, resizeHandleIndex, currentX, currentY);
+            if (selectedShape.type === 'circle') {
+                config.resize(selectedShape, resizeHandleIndex, currentX, currentY);
+            } else {
+                const dx = currentX - startX;
+                const dy = currentY - startY;
+                config.resize(selectedShape, resizeHandleIndex, dx, dy);
+            }
 
             config.updateElement(selectedShape.element, selectedShape);
 
@@ -726,7 +734,7 @@
                 config.updateSelectionBox(selectionBox, selectedShape);
             }
 
-            createResizeHandles(selectedShape);
+            updateResizeHandles(selectedShape);
 
             startX = currentX;
             startY = currentY;
