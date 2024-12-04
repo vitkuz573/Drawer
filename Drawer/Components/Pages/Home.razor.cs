@@ -1,5 +1,4 @@
-﻿using Drawer.Converters;
-using Drawer.Models;
+﻿using Drawer.Models;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json;
@@ -73,13 +72,7 @@ public partial class Home : ComponentBase, IDisposable
 
         try
         {
-            var shapes = JsonSerializer.Deserialize<List<Shape>>(JsonInput, new JsonSerializerOptions
-            {
-                Converters = { new ShapeJsonConverter() },
-                PropertyNameCaseInsensitive = true
-            }) ?? [];
-
-            Shapes = shapes;
+            Shapes = JsonSerializer.Deserialize<List<Shape>>(JsonInput) ?? [];
 
             await JsRuntime.InvokeVoidAsync("updateShapesFromJson", JsonInput);
         }
@@ -94,10 +87,7 @@ public partial class Home : ComponentBase, IDisposable
     {
         JsonInput = json;
 
-        Shapes = JsonSerializer.Deserialize<List<Shape>>(json, new JsonSerializerOptions
-        {
-            Converters = { new ShapeJsonConverter() }
-        }) ?? [];
+        Shapes = JsonSerializer.Deserialize<List<Shape>>(json) ?? [];
 
         await InvokeAsync(StateHasChanged);
     }
