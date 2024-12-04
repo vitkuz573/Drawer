@@ -18,6 +18,10 @@ public partial class Home : ComponentBase, IDisposable
     private Shape? _selectedShape;
     private DotNetObjectReference<Home>? _dotNetRef;
 
+    private double _contextMenuXpx;
+    private double _contextMenuYpx;
+    private bool _isContextMenuVisible;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -77,6 +81,7 @@ public partial class Home : ComponentBase, IDisposable
         {
             await JsRuntime.InvokeVoidAsync("deleteShape", _selectedShape);
             _selectedShape = null;
+            HideContextMenu();
             await JsRuntime.InvokeVoidAsync("updateJson");
         }
     }
@@ -86,7 +91,33 @@ public partial class Home : ComponentBase, IDisposable
         if (_selectedShape != null)
         {
             await JsRuntime.InvokeVoidAsync("alert", $"Custom Action for {_selectedShape.Type}");
+
+            HideContextMenu();
         }
+    }
+
+    [JSInvokable]
+    public void OnShapeRightClicked(double svgX, double svgY, Shape shape)
+    {
+        _selectedShape = shape;
+        
+        ShowContextMenu(svgX, svgY);
+    }
+
+    private void ShowContextMenu(double x, double y)
+    {
+        _contextMenuXpx = x;
+        _contextMenuYpx = y;
+        _isContextMenuVisible = true;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HideContextMenu()
+    {
+        _isContextMenuVisible = false;
+
+        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()

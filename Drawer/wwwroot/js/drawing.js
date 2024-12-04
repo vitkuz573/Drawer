@@ -8,11 +8,7 @@
         .attr("width", 800)
         .attr("height", 600)
         .style("border", "1px solid #ccc")
-        .style("background-color", "#fff")
-        .on("contextmenu", (event) => {
-            event.preventDefault();
-            hideContextMenu();
-        });
+        .style("background-color", "#fff");
 
     let shapes = [];
     let selectedShape = null;
@@ -24,80 +20,10 @@
     let currentTool = "rect";
     let currentColor = "#0000ff";
     let currentElement = null;
-    let contextMenuVisible = false;
     let isLocked = false;
     let selectionBox = null;
 
     const dotNet = dotNetHelper;
-
-    /**
-     * Создаёт и настраивает контекстное меню.
-     */
-    const contextMenu = d3.select("body")
-        .append("div")
-        .attr("id", "custom-context-menu")
-        .style("position", "absolute")
-        .style("background-color", "white")
-        .style("border", "1px solid #ccc")
-        .style("box-shadow", "0 2px 10px rgba(0,0,0,0.2)")
-        .style("padding", "8px")
-        .style("display", "none")
-        .style("z-index", "1000")
-        .style("min-width", "150px")
-        .style("border-radius", "4px");
-
-    /**
-     * Добавляет элементы меню для удаления и выполнения пользовательских действий.
-     */
-    contextMenu.append("div")
-        .attr("class", "menu-item")
-        .style("padding", "8px 12px")
-        .style("cursor", "pointer")
-        .style("hover", "background-color: #f0f0f0;")
-        .text("Delete Selected Shape")
-        .on("click", () => {
-            if (selectedShape && !isLocked) {
-                deleteShape(selectedShape);
-                hideContextMenu();
-                dotNet.invokeMethodAsync('UpdateJson', JSON.stringify(shapes))
-                    .catch(error => console.error(error));
-            }
-        });
-
-    contextMenu.append("div")
-        .attr("class", "menu-item")
-        .style("padding", "8px 12px")
-        .style("cursor", "pointer")
-        .style("hover", "background-color: #f0f0f0;")
-        .text("Custom Action")
-        .on("click", () => {
-            if (selectedShape && !isLocked) {
-                dotNet.invokeMethodAsync('CustomAction')
-                    .catch(error => console.error(error));
-                hideContextMenu();
-            }
-        });
-
-    /**
-     * Отображает контекстное меню в заданных координатах.
-     * @param {number} x - Координата X.
-     * @param {number} y - Координата Y.
-     */
-    function showContextMenu(x, y) {
-        if (isLocked) return;
-        contextMenu.style("left", `${x}px`)
-            .style("top", `${y}px`)
-            .style("display", "block");
-        contextMenuVisible = true;
-    }
-
-    /**
-     * Скрывает контекстное меню.
-     */
-    function hideContextMenu() {
-        contextMenu.style("display", "none");
-        contextMenuVisible = false;
-    }
 
     /**
      * Создаёт ручки для изменения размеров выбранной фигуры.
@@ -144,8 +70,8 @@
             .classed("selected", true);
 
         selectedShape = shape;
-        dotNet.invokeMethodAsync('OnShapeSelected', shape)
-            .catch(error => console.error(error));
+        //dotNet.invokeMethodAsync('OnShapeSelected', shape)
+        //    .catch(error => console.error(error));
     }
 
     /**
@@ -214,7 +140,7 @@
      * Удаляет фигуру из SVG и массива фигур.
      * @param {Object} shape - Фигура для удаления.
      */
-    function deleteShape(shape) {
+    window.deleteShape = function (shape) {
         if (!shape) return;
 
         svg.selectAll("*")
@@ -274,7 +200,6 @@
 
         if (isLocked) {
             clearSelection();
-            hideContextMenu();
         }
     };
 
@@ -495,16 +420,23 @@
         if (isLocked) return;
 
         event.preventDefault();
-        const [x, y] = d3.pointer(event, window);
+
+        const svgRect = svgElement.getBoundingClientRect();
+        const containerRect = svgElement.parentElement.getBoundingClientRect();
+
+        // Координаты относительно контейнера
+        const x = event.clientX - containerRect.left;
+        const y = event.clientY - containerRect.top;
+
         const target = event.target;
         const datum = d3.select(target).datum();
 
         if (datum && datum.Type === "rect") {
             selectShape(datum);
-            showContextMenu(event.clientX, event.clientY);
+            dotNet.invokeMethodAsync('OnShapeRightClicked', x, y, datum)
+                .catch(error => console.error("Invoke error:", error));
         } else {
             clearSelection();
-            hideContextMenu();
         }
     });
 };

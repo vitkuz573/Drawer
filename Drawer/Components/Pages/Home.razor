@@ -17,18 +17,25 @@
             <span>Lock</span>
         </label>
     </div>
-    <svg @ref="_svgElement" width="800" height="600" class="border border-gray-400 bg-white shadow-md"></svg>
+
+    <div class="relative">
+        <svg @ref="_svgElement" width="800" height="600" class="border border-gray-400 bg-white shadow-md"></svg>
+
+        @if (_isContextMenuVisible)
+        {
+            <div id="context-menu" style="top:@($"{_contextMenuYpx}px"); left:@($"{_contextMenuXpx}px"); display: block;"
+                 class="absolute z-50 w-40 rounded-md border border-gray-300 bg-white shadow-lg">
+                <ul class="m-0 list-none p-0">
+                    <li @onclick="DeleteShape" class="cursor-pointer p-2 hover:bg-gray-100">Delete Selected Shape</li>
+                    <li @onclick="CustomAction" class="cursor-pointer p-2 hover:bg-gray-100">Custom Action</li>
+                </ul>
+            </div>
+        }
+    </div>
 </div>
 
 <div class="flex w-96 flex-col space-y-2">
     <textarea @bind="JsonInput" class="h-64 w-full rounded border border-gray-300 p-2 shadow-sm" placeholder="Edit or paste JSON here"></textarea>
-</div>
-
-<div id="context-menu">
-    <ul>
-        <li @onclick="DeleteShape">Delete Selected Shape</li>
-        <li @onclick="CustomAction">Custom Action</li>
-    </ul>
 </div>
 
 <style>
