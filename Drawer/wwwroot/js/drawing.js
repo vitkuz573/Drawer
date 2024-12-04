@@ -59,7 +59,7 @@
                 fill: '#0000ff',
                 stroke: '#0000ff',
                 'stroke-width': 2,
-                opacity: 0.8
+                opacity: 1
             },
             /**
              * Создаёт объект фигуры прямоугольника.
@@ -74,7 +74,7 @@
                 fill: color,
                 stroke: color,
                 strokeWidth: 2,
-                opacity: 0.8
+                opacity: 1
             }),
             /**
              * Создаёт SVG элемент для прямоугольника.
@@ -207,7 +207,7 @@
                 fill: '#ff0000',
                 stroke: '#ff0000',
                 'stroke-width': 2,
-                opacity: 0.8
+                opacity: 1
             },
             /**
              * Создаёт объект фигуры круга.
@@ -221,7 +221,7 @@
                 fill: color,
                 stroke: color,
                 strokeWidth: 2,
-                opacity: 0.8
+                opacity: 1
             }),
             /**
              * Создаёт SVG элемент для круга.
