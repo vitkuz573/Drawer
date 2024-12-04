@@ -564,9 +564,9 @@
     };
 
     /**
- * Обновляет SVG на основе переданного JSON.
- * @param {string} json - JSON строка с фигурами.
- */
+     * Обновляет SVG на основе переданного JSON.
+     * @param {string} json - JSON строка с фигурами.
+     */
     window.updateShapesFromJson = function (json) {
         try {
             const shapesData = JSON.parse(json);
