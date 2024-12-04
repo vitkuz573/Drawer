@@ -32,10 +32,12 @@ public partial class Home : ComponentBase, IDisposable
             _dotNetRef = DotNetObjectReference.Create(this);
 
             await JsRuntime.InvokeVoidAsync("initialize", _svgElement, _dotNetRef);
-            await JsRuntime.InvokeVoidAsync("updateJson");
+
             await JsRuntime.InvokeVoidAsync("setLock", IsLocked);
             await JsRuntime.InvokeVoidAsync("setColor", SelectedColor);
             await JsRuntime.InvokeVoidAsync("setTool", SelectedTool);
+
+            await JsRuntime.InvokeVoidAsync("updateJson");
         }
     }
 
