@@ -1,4 +1,6 @@
-﻿window.initialize = function (svgElement, dotNetHelper) {
+﻿// wwwroot/js/drawing.js
+
+window.initialize = function (svgElement, dotNetHelper) {
     /**
      * Инициализирует SVG элемент и настраивает все необходимые обработчики событий.
      * @param {HTMLElement} svgElement - Ссылка на SVG элемент.
@@ -10,8 +12,8 @@
         .style("border", "1px solid #ccc")
         .style("background-color", "#fff");
 
-    let shapes = [];
-    let selectedShape = null;
+    let shapes = []; // Массив для хранения фигур
+    let selectedShapeId = null; // Id выбранной фигуры
     let isDrawing = false;
     let isMoving = false;
     let isResizing = false;
@@ -24,6 +26,14 @@
     let selectionBox = null;
 
     const dotNet = dotNetHelper;
+
+    /**
+     * Генерирует уникальный идентификатор для фигур.
+     * @returns {string} - Уникальный идентификатор.
+     */
+    function generateUniqueId() {
+        return 'shape-' + Math.random().toString(36).substr(2, 9);
+    }
 
     /**
      * Создаёт ручки для изменения размеров выбранной фигуры.
@@ -66,12 +76,10 @@
         }
 
         svg.selectAll("rect")
-            .filter(d => d === shape)
+            .filter(d => d && d.Id === shape.Id)
             .classed("selected", true);
 
-        selectedShape = shape;
-        //dotNet.invokeMethodAsync('OnShapeSelected', shape)
-        //    .catch(error => console.error(error));
+        selectedShapeId = shape.Id;
     }
 
     /**
@@ -100,7 +108,7 @@
      * Очищает текущий выбор и удаляет рамку выделения.
      */
     function clearSelection() {
-        selectedShape = null;
+        selectedShapeId = null;
         if (selectionBox) {
             selectionBox.remove();
             selectionBox = null;
@@ -113,13 +121,13 @@
 
     /**
      * Выбирает фигуру и отображает рамку выделения.
-     * @param {Object} shape - Выбранная фигура.
+     * @param {Object} shape - Фигура для выбора.
      */
     function selectShape(shape) {
         if (isLocked) return;
 
         clearSelection();
-        selectedShape = shape;
+        selectedShapeId = shape.Id;
 
         if (shape.Type === "rect") {
             selectionBox = svg.append("rect")
@@ -138,24 +146,29 @@
 
     /**
      * Удаляет фигуру из SVG и массива фигур.
-     * @param {Object} shape - Фигура для удаления.
+     * @param {string} shapeId - Уникальный идентификатор фигуры для удаления.
      */
-    window.deleteShape = function (shape) {
-        if (!shape) return;
+    window.deleteShape = function (shapeId) {
+        if (!shapeId) return;
 
-        svg.selectAll("*")
-            .filter(d => d === shape)
+        // Находим индекс фигуры в массиве
+        const shapeIndex = shapes.findIndex(s => s.Id === shapeId);
+        if (shapeIndex === -1) return;
+
+        // Удаляем фигуру из SVG
+        svg.selectAll("rect")
+            .filter(d => d && d.Id === shapeId)
             .remove();
 
-        shapes = shapes.filter(s => s !== shape);
+        // Удаляем фигуру из массива
+        shapes.splice(shapeIndex, 1);
         clearSelection();
-        dotNet.invokeMethodAsync('UpdateJson', JSON.stringify(shapes))
-            .catch(error => console.error(error));
+        updateJson();
     }
 
     /**
-     * Устанавливает текущий цвет для рисования
-     * @param {string} color - Код цвета
+     * Устанавливает текущий цвет для рисования.
+     * @param {string} color - Код цвета.
      */
     window.setColor = function (color) {
         currentColor = color;
@@ -167,7 +180,7 @@
 
     /**
      * Устанавливает текущий инструмент для рисования.
-     * @param {string} tool - Название инструмента ('rect').
+     * @param {string} tool - Название инструмента (например, 'rect').
      */
     window.setTool = function (tool) {
         if (tool === "rect") {
@@ -208,7 +221,7 @@
      */
     window.updateJson = function () {
         const json = JSON.stringify(shapes);
-        console.log("Sending JSON to Blazor:", json);
+        console.log("Отправка JSON в Blazor:", json);
         dotNet.invokeMethodAsync('UpdateJson', json)
             .catch(error => console.error(error));
     };
@@ -224,7 +237,7 @@
 
         event.preventDefault();
 
-        if (event.button !== 0) return;
+        if (event.button !== 0) return; // Отвечаем только на левый клик
 
         const [x, y] = d3.pointer(event);
 
@@ -246,6 +259,7 @@
         let newShape = {};
         if (currentTool === "rect") {
             newShape = {
+                Id: generateUniqueId(),
                 Type: "rect",
                 X: x,
                 Y: y,
@@ -297,33 +311,36 @@
                     .attr("y", height < 0 ? currentY : startY);
 
                 const shape = currentElement.datum();
-                shape.Width = width;
-                shape.Height = height;
+                shape.Width = Math.abs(width);
+                shape.Height = Math.abs(height);
+                shape.X = width < 0 ? currentX : startX;
+                shape.Y = height < 0 ? currentY : startY;
             }
 
             updateJson();
         }
 
-        if (isMoving && selectedShape) {
+        if (isMoving && selectedShapeId) {
             const dx = event.clientX - startX;
             const dy = event.clientY - startY;
 
-            if (selectedShape.Type === "rect") {
-                selectedShape.X += dx;
-                selectedShape.Y += dy;
+            const shape = shapes.find(s => s.Id === selectedShapeId);
+            if (shape && shape.Type === "rect") {
+                shape.X += dx;
+                shape.Y += dy;
 
                 svg.selectAll("rect")
-                    .filter(d => d === selectedShape)
-                    .attr("x", selectedShape.X)
-                    .attr("y", selectedShape.Y);
+                    .filter(d => d.Id === shape.Id)
+                    .attr("x", shape.X)
+                    .attr("y", shape.Y);
 
                 if (selectionBox) {
                     selectionBox
-                        .attr("x", selectedShape.X)
-                        .attr("y", selectedShape.Y);
+                        .attr("x", shape.X)
+                        .attr("y", shape.Y);
                 }
 
-                updateResizeHandles(selectedShape);
+                updateResizeHandles(shape);
             }
 
             startX = event.clientX;
@@ -332,57 +349,59 @@
             updateJson();
         }
 
-        if (isResizing && selectedShape) {
+        if (isResizing && selectedShapeId) {
             const dx = event.clientX - startX;
             const dy = event.clientY - startY;
 
-            if (selectedShape.Type === "rect") {
+            const shape = shapes.find(s => s.Id === selectedShapeId);
+            if (shape && shape.Type === "rect") {
                 switch (resizeHandleIndex) {
                     case "0":
-                        selectedShape.X += dx;
-                        selectedShape.Y += dy;
-                        selectedShape.Width -= dx;
-                        selectedShape.Height -= dy;
+                        shape.X += dx;
+                        shape.Y += dy;
+                        shape.Width -= dx;
+                        shape.Height -= dy;
                         break;
                     case "1":
-                        selectedShape.Y += dy;
-                        selectedShape.Width += dx;
-                        selectedShape.Height -= dy;
+                        shape.Y += dy;
+                        shape.Width += dx;
+                        shape.Height -= dy;
                         break;
                     case "2":
-                        selectedShape.X += dx;
-                        selectedShape.Width -= dx;
-                        selectedShape.Height += dy;
+                        shape.X += dx;
+                        shape.Width -= dx;
+                        shape.Height += dy;
                         break;
                     case "3":
-                        selectedShape.Width += dx;
-                        selectedShape.Height += dy;
+                        shape.Width += dx;
+                        shape.Height += dy;
                         break;
                 }
 
-                if (selectedShape.Width < 0) {
-                    selectedShape.Width = 0;
+                // Предотвращение отрицательных размеров
+                if (shape.Width < 0) {
+                    shape.Width = 0;
                 }
-                if (selectedShape.Height < 0) {
-                    selectedShape.Height = 0;
+                if (shape.Height < 0) {
+                    shape.Height = 0;
                 }
 
                 svg.selectAll("rect")
-                    .filter(d => d === selectedShape)
-                    .attr("x", selectedShape.X)
-                    .attr("y", selectedShape.Y)
-                    .attr("width", selectedShape.Width)
-                    .attr("height", selectedShape.Height);
+                    .filter(d => d.Id === shape.Id)
+                    .attr("x", shape.X)
+                    .attr("y", shape.Y)
+                    .attr("width", shape.Width)
+                    .attr("height", shape.Height);
 
                 if (selectionBox) {
                     selectionBox
-                        .attr("x", selectedShape.X)
-                        .attr("y", selectedShape.Y)
-                        .attr("width", selectedShape.Width)
-                        .attr("height", selectedShape.Height);
+                        .attr("x", shape.X)
+                        .attr("y", shape.Y)
+                        .attr("width", shape.Width)
+                        .attr("height", shape.Height);
                 }
 
-                updateResizeHandles(selectedShape);
+                updateResizeHandles(shape);
             }
 
             startX = event.clientX;
@@ -433,7 +452,7 @@
 
         if (datum && datum.Type === "rect") {
             selectShape(datum);
-            dotNet.invokeMethodAsync('OnShapeRightClicked', x, y, datum)
+            dotNet.invokeMethodAsync('OnShapeRightClicked', x, y, datum.Id)
                 .catch(error => console.error("Invoke error:", error));
         } else {
             clearSelection();

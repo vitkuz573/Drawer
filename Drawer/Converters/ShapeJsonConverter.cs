@@ -23,7 +23,6 @@ public class ShapeJsonConverter : JsonConverter<Shape>
             "rect" => JsonSerializer.Deserialize<Rectangle>(jsonObject.GetRawText(), options),
             _ => throw new NotSupportedException($"Тип фигуры '{type}' не поддерживается."),
         };
-
     }
 
     public override void Write(Utf8JsonWriter writer, Shape value, JsonSerializerOptions options)

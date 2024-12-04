@@ -1,6 +1,8 @@
-﻿using Drawer.Models;
+﻿using Drawer.Converters;
+using Drawer.Models;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using System.Text.Json;
 
 namespace Drawer.Components.Pages;
 
@@ -21,6 +23,8 @@ public partial class Home : ComponentBase, IDisposable
     private double _contextMenuXpx;
     private double _contextMenuYpx;
     private bool _isContextMenuVisible;
+
+    private List<Shape> Shapes { get; set; } = [];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -60,26 +64,32 @@ public partial class Home : ComponentBase, IDisposable
         await JsRuntime.InvokeVoidAsync("setLock", IsLocked);
     }
 
-    public void OnShapeSelected(Shape shape)
-    {
-        _selectedShape = shape;
-
-        StateHasChanged();
-    }
-
     [JSInvokable]
     public async Task UpdateJson(string json)
     {
         JsonInput = json;
 
+        Shapes = JsonSerializer.Deserialize<List<Shape>>(json, new JsonSerializerOptions
+        {
+            Converters = { new ShapeJsonConverter() }
+        }) ?? [];
+
         await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnShapeRightClicked(double svgX, double svgY, string shapeId)
+    {
+        _selectedShape = Shapes.Find(s => s.Id == shapeId);
+
+        ShowContextMenu(svgX, svgY);
     }
 
     private async Task DeleteShape()
     {
         if (_selectedShape != null)
         {
-            await JsRuntime.InvokeVoidAsync("deleteShape", _selectedShape);
+            await JsRuntime.InvokeVoidAsync("deleteShape", _selectedShape.Id);
             _selectedShape = null;
             HideContextMenu();
             await JsRuntime.InvokeVoidAsync("updateJson");
@@ -90,18 +100,10 @@ public partial class Home : ComponentBase, IDisposable
     {
         if (_selectedShape != null)
         {
-            await JsRuntime.InvokeVoidAsync("alert", $"Custom Action for {_selectedShape.Type}");
+            await JsRuntime.InvokeVoidAsync("alert", $"Пользовательское действие для фигуры ID: {_selectedShape.Id}");
 
             HideContextMenu();
         }
-    }
-
-    [JSInvokable]
-    public void OnShapeRightClicked(double svgX, double svgY, Shape shape)
-    {
-        _selectedShape = shape;
-        
-        ShowContextMenu(svgX, svgY);
     }
 
     private void ShowContextMenu(double x, double y)
