@@ -13,10 +13,10 @@
     let isResizing = false;
     let resizeHandleIndex = -1;
     let startX, startY;
-    let currentTool = "rect";
-    let currentColor = "#0000ff";
+    let currentTool;
+    let currentColor;
     let currentElement = null;
-    let isLocked = false;
+    let isLocked;
     let selectionBox = null;
 
     const dotNet = dotNetHelper;

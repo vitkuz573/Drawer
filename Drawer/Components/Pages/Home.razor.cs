@@ -34,6 +34,9 @@ public partial class Home : ComponentBase, IDisposable
 
             await JsRuntime.InvokeVoidAsync("initialize", _svgElement, _dotNetRef);
             await JsRuntime.InvokeVoidAsync("updateJson");
+            await JsRuntime.InvokeVoidAsync("setLock", IsLocked);
+            await JsRuntime.InvokeVoidAsync("setColor", SelectedColor);
+            await JsRuntime.InvokeVoidAsync("setTool", SelectedTool);
         }
     }
 
@@ -74,19 +77,15 @@ public partial class Home : ComponentBase, IDisposable
             {
                 Converters = { new ShapeJsonConverter() },
                 PropertyNameCaseInsensitive = true
-            }) ?? new List<Shape>();
+            }) ?? [];
 
-            // Обновляем внутреннее состояние Shapes
             Shapes = shapes;
 
-            // Отправляем обновленный JSON в JavaScript для обновления SVG
             await JsRuntime.InvokeVoidAsync("updateShapesFromJson", JsonInput);
         }
         catch (JsonException ex)
         {
-            // Обработка ошибок парсинга JSON
-            Console.Error.WriteLine($"Invalid JSON: {ex.Message}");
-            // Здесь можно добавить уведомление пользователя об ошибке
+            await Console.Error.WriteLineAsync($"Invalid JSON: {ex.Message}");
         }
     }
 
