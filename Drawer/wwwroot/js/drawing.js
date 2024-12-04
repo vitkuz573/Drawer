@@ -1,19 +1,12 @@
-﻿// wwwroot/js/drawing.js
-
-window.initialize = function (svgElement, dotNetHelper) {
-    /**
-     * Инициализирует SVG элемент и настраивает все необходимые обработчики событий.
-     * @param {HTMLElement} svgElement - Ссылка на SVG элемент.
-     * @param {DotNetObjectReference} dotNetHelper - Ссылка на объект .NET для взаимодействия.
-     */
+﻿window.initialize = function (svgElement, dotNetHelper) {
     const svg = d3.select(svgElement)
         .attr("width", 800)
         .attr("height", 600)
         .style("border", "1px solid #ccc")
         .style("background-color", "#fff");
 
-    let shapes = []; // Массив для хранения фигур
-    let selectedShapeId = null; // Id выбранной фигуры
+    let shapes = [];
+    let selectedShapeId = null;
     let isDrawing = false;
     let isMoving = false;
     let isResizing = false;
@@ -32,7 +25,7 @@ window.initialize = function (svgElement, dotNetHelper) {
      * @returns {string} - Уникальный идентификатор.
      */
     function generateUniqueId() {
-        return 'shape-' + Math.random().toString(36).substr(2, 9);
+        return 'shape-' + Math.random().toString(36).slice(2, 11);
     }
 
     /**
@@ -151,16 +144,13 @@ window.initialize = function (svgElement, dotNetHelper) {
     window.deleteShape = function (shapeId) {
         if (!shapeId) return;
 
-        // Находим индекс фигуры в массиве
         const shapeIndex = shapes.findIndex(s => s.Id === shapeId);
         if (shapeIndex === -1) return;
 
-        // Удаляем фигуру из SVG
         svg.selectAll("rect")
             .filter(d => d && d.Id === shapeId)
             .remove();
 
-        // Удаляем фигуру из массива
         shapes.splice(shapeIndex, 1);
         clearSelection();
         updateJson();
@@ -221,7 +211,6 @@ window.initialize = function (svgElement, dotNetHelper) {
      */
     window.updateJson = function () {
         const json = JSON.stringify(shapes);
-        console.log("Отправка JSON в Blazor:", json);
         dotNet.invokeMethodAsync('UpdateJson', json)
             .catch(error => console.error(error));
     };
@@ -237,7 +226,7 @@ window.initialize = function (svgElement, dotNetHelper) {
 
         event.preventDefault();
 
-        if (event.button !== 0) return; // Отвечаем только на левый клик
+        if (event.button !== 0) return;
 
         const [x, y] = d3.pointer(event);
 
@@ -378,7 +367,6 @@ window.initialize = function (svgElement, dotNetHelper) {
                         break;
                 }
 
-                // Предотвращение отрицательных размеров
                 if (shape.Width < 0) {
                     shape.Width = 0;
                 }
@@ -440,10 +428,8 @@ window.initialize = function (svgElement, dotNetHelper) {
 
         event.preventDefault();
 
-        const svgRect = svgElement.getBoundingClientRect();
         const containerRect = svgElement.parentElement.getBoundingClientRect();
 
-        // Координаты относительно контейнера
         const x = event.clientX - containerRect.left;
         const y = event.clientY - containerRect.top;
 
