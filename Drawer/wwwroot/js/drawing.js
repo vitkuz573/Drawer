@@ -73,7 +73,7 @@
              */
             createShape: (id, x, y, color) => ({
                 id,
-                Type: 'rect',
+                type: 'rect',
                 x,
                 y,
                 width: 0,
@@ -256,7 +256,7 @@
              */
             createShape: (id, x, y, color) => ({
                 id,
-                Type: 'circle',
+                type: 'circle',
                 cx: x,
                 cy: y,
                 r: 0,
@@ -399,7 +399,7 @@
 
         if (!shape) return;
 
-        const config = shapeConfigs[shape.Type];
+        const config = shapeConfigs[shape.type];
         if (!config) return;
 
         const handles = config.getResizeHandles(shape);
@@ -468,7 +468,7 @@
         clearSelection();
         selectedShape = shape;
 
-        const config = shapeConfigs[shape.Type];
+        const config = shapeConfigs[shape.type];
         if (!config) return;
 
         selectionBox = config.createSelectionBox(shape);
@@ -491,7 +491,7 @@
         }
 
         const shape = shapes[shapeIndex];
-        const config = shapeConfigs[shape.Type];
+        const config = shapeConfigs[shape.type];
         if (!config) {
             return;
         }
@@ -515,8 +515,8 @@
             const shapeId = currentElement.getAttribute('data-id');
             const shape = shapes.find(s => s.id === shapeId);
             if (shape) {
-                shapeConfigs[shape.Type].updateColor(shape, color);
-                shapeConfigs[shape.Type].updateElement(shape.element, shape);
+                shapeConfigs[shape.type].updateColor(shape, color);
+                shapeConfigs[shape.type].updateElement(shape.element, shape);
                 updateJson();
             }
         }
@@ -575,7 +575,7 @@
 
             // Удаляем существующие фигуры из SVG
             shapes.forEach(shape => {
-                const config = shapeConfigs[shape.Type];
+                const config = shapeConfigs[shape.type];
                 if (config) {
                     const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
                     shapeElements.forEach(el => el.remove());
@@ -585,7 +585,7 @@
 
             // Добавляем новые фигуры из JSON
             shapesData.forEach(shapeData => {
-                const config = shapeConfigs[shapeData.Type];
+                const config = shapeConfigs[shapeData.type];
                 if (config) {
                     const newShape = config.createShape(
                         shapeData.id,
@@ -676,7 +676,7 @@
 
         if (isDrawing && currentElement) {
             const shape = shapes[shapes.length - 1];
-            const config = shapeConfigs[shape.Type];
+            const config = shapeConfigs[shape.type];
             if (!config) {
                 return;
             }
@@ -691,7 +691,7 @@
             const dx = currentX - startX;
             const dy = currentY - startY;
 
-            const config = shapeConfigs[selectedShape.Type];
+            const config = shapeConfigs[selectedShape.type];
             if (!config) {
                 return;
             }
@@ -713,7 +713,7 @@
         }
 
         if (isResizing && selectedShape) {
-            const config = shapeConfigs[selectedShape.Type];
+            const config = shapeConfigs[selectedShape.type];
             if (!config) {
                 return;
             }
@@ -748,7 +748,7 @@
             let shouldRemove = false;
 
             if (lastShape) {
-                const config = shapeConfigs[lastShape.Type];
+                const config = shapeConfigs[lastShape.type];
                 if (config && config.shouldRemove(lastShape)) {
                     shouldRemove = true;
                 }

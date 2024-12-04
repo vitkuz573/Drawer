@@ -11,17 +11,24 @@ public class ShapeJsonConverter : JsonConverter<Shape>
         using var jsonDoc = JsonDocument.ParseValue(ref reader);
         var jsonObject = jsonDoc.RootElement;
 
-        if (!jsonObject.TryGetProperty("Type", out var typeProperty))
+        var typeProperty = jsonObject.EnumerateObject()
+            .FirstOrDefault(p => string.Equals(p.Name, "type", StringComparison.OrdinalIgnoreCase));
+
+        if (typeProperty.Value.ValueKind == JsonValueKind.Undefined)
         {
-            throw new JsonException("Отсутствует свойство 'Type'.");
+            throw new JsonException("Отсутствует свойство 'type'.");
         }
 
-        var type = typeProperty.GetString();
+        var type = typeProperty.Value.GetString();
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            throw new JsonException("Свойство 'type' не может быть пустым.");
+        }
 
         return type switch
         {
-            "rect" => JsonSerializer.Deserialize<Rectangle>(jsonObject.GetRawText(), options),
-            "circle" => JsonSerializer.Deserialize<Rectangle>(jsonObject.GetRawText(), options),
+            "rect" => JsonSerializer.Deserialize<Rectangle>(jsonObject.GetRawText(), options) ?? throw new JsonException("Не удалось десериализовать фигуру типа 'rect'."),
+            "circle" => JsonSerializer.Deserialize<Circle>(jsonObject.GetRawText(), options) ?? throw new JsonException("Не удалось десериализовать фигуру типа 'circle'."),
             _ => throw new NotSupportedException($"Тип фигуры '{type}' не поддерживается."),
         };
     }
