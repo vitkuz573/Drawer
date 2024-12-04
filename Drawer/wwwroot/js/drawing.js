@@ -205,6 +205,13 @@
                 box.style.strokeDasharray = "4";
                 svg.appendChild(box);
                 return box;
+            },
+            /**
+             * Обновляет цвет фигуры.
+             */
+            updateColor: (shape, color) => {
+                shape.fill = color;
+                shape.stroke = color;
             }
         },
         circle: {
@@ -315,6 +322,13 @@
                 box.style.strokeDasharray = "4";
                 svg.appendChild(box);
                 return box;
+            },
+            /**
+             * Обновляет цвет фигуры.
+             */
+            updateColor: (shape, color) => {
+                shape.fill = color;
+                shape.stroke = color;
             }
         }
     };
@@ -488,12 +502,7 @@
             const shapeId = currentElement.getAttribute('data-id');
             const shape = shapes.find(s => s.id === shapeId);
             if (shape) {
-                if (shapeConfigs[shape.Type].defaultProps.fill) {
-                    shape.fill = color;
-                }
-                if (shapeConfigs[shape.Type].defaultProps.stroke) {
-                    shape.stroke = color;
-                }
+                shapeConfigs[shape.Type].updateColor(shape, color);
                 shapeConfigs[shape.Type].updateElement(shape.element, shape);
                 updateJson();
             }
