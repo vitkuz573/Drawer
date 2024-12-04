@@ -212,6 +212,14 @@
             updateColor: (shape, color) => {
                 shape.fill = color;
                 shape.stroke = color;
+            },
+            /**
+             * Проверяет, должна ли фигура быть удалена.
+             * @param {Object} shape - Фигура для проверки.
+             * @returns {boolean} - true, если фигура должна быть удалена, иначе false.
+             */
+            shouldRemove: (shape) => {
+                return shape.width === 0 || shape.height === 0;
             }
         },
         circle: {
@@ -329,6 +337,14 @@
             updateColor: (shape, color) => {
                 shape.fill = color;
                 shape.stroke = color;
+            },
+            /**
+             * Проверяет, должна ли фигура быть удалена.
+             * @param {Object} shape - Фигура для проверки.
+             * @returns {boolean} - true, если фигура должна быть удалена, иначе false.
+             */
+            shouldRemove: (shape) => {
+                return shape.r === 0;
             }
         }
     };
@@ -507,7 +523,7 @@
                 updateJson();
             }
         }
-    };
+    }
 
     /**
      * Устанавливает текущий инструмент для рисования.
@@ -515,7 +531,7 @@
      */
     window.setTool = function (tool) {
         currentTool = tool;
-    };
+    }
 
     /**
      * Возвращает текущие фигуры в формате JSON.
@@ -527,7 +543,7 @@
             return data;
         });
         return JSON.stringify(dataOnlyShapes);
-    };
+    }
 
     /**
      * Устанавливает состояние блокировки для предотвращения взаимодействий.
@@ -547,7 +563,7 @@
         if (isLocked) {
             clearSelection();
         }
-    };
+    }
 
     /**
      * Обновляет SVG на основе переданного JSON.
@@ -593,7 +609,7 @@
         } catch (error) {
             console.error("Не удалось обновить фигуры из JSON:", error);
         }
-    };
+    }
 
     /**
      * Обновляет JSON представление фигур и отправляет его в Blazor.
@@ -606,7 +622,7 @@
         const json = JSON.stringify(dataOnlyShapes);
 
         dotNet.invokeMethodAsync('UpdateJson', json);
-    };
+    }
 
     /**
      * Обрабатывает событие mousedown на SVG.
@@ -741,14 +757,9 @@
             let shouldRemove = false;
 
             if (lastShape) {
-                if (lastShape.Type === 'rect') {
-                    if (lastShape.width === 0 || lastShape.height === 0) {
-                        shouldRemove = true;
-                    }
-                } else if (lastShape.Type === 'circle') {
-                    if (lastShape.r === 0) {
-                        shouldRemove = true;
-                    }
+                const config = shapeConfigs[lastShape.Type];
+                if (config && config.shouldRemove(lastShape)) {
+                    shouldRemove = true;
                 }
             }
 
