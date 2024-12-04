@@ -455,7 +455,7 @@
             return data;
         });
 
-        dotNet.invokeMethodAsync('UpdateJson', JSON.stringify(dataOnlyShapes));
+        dotNet.invokeMethodAsync('UpdateJson', JSON.stringify(dataOnlyShapes, null, 2));
     }
 
     /**
@@ -539,7 +539,7 @@
             const { element, ...data } = shape;
             return data;
         });
-        return JSON.stringify(dataOnlyShapes);
+        return JSON.stringify(dataOnlyShapes, null, 2);
     }
 
     /**
@@ -616,7 +616,7 @@
             const { element, ...data } = shape;
             return data;
         });
-        const json = JSON.stringify(dataOnlyShapes);
+        const json = JSON.stringify(dataOnlyShapes, null, 2);
 
         dotNet.invokeMethodAsync('UpdateJson', json);
     }
