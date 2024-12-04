@@ -125,7 +125,7 @@ public partial class Home : ComponentBase, IDisposable
     {
         if (_selectedShape != null)
         {
-            await JsRuntime.InvokeVoidAsync("alert", $"ID: {_selectedShape.Id}");
+            await JsRuntime.InvokeVoidAsync("alert", $"Shape ID: {_selectedShape.Id}");
 
             HideContextMenu();
         }
