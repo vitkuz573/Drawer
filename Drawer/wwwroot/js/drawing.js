@@ -244,20 +244,14 @@
             /**
              * Обновляет свойства круга при изменении размеров.
              */
-            resize: (shape, handleIndex, dx, dy) => {
-                switch (handleIndex) {
-                    case "0": // Право
-                    case "1": // Лево
-                    case "2": // Низ
-                    case "3": // Верх
-                        shape.r += Math.max(dx, dy);
-                        break;
-                }
+            resize: (shape, handleIndex, currentX, currentY) => {
+                // Вычисляем новое расстояние от центра до текущей позиции курсора
+                const dx = currentX - shape.cx;
+                const dy = currentY - shape.cy;
+                const newR = Math.sqrt(dx * dx + dy * dy);
 
-                // Предотвращаем отрицательный радиус
-                if (shape.r < 10) {
-                    shape.r = 10;
-                }
+                // Устанавливаем новый радиус, обеспечивая минимальный размер
+                shape.r = Math.max(newR, 10);
             },
             /**
              * Обновляет свойства фигуры при рисовании.
@@ -316,28 +310,57 @@
 
         const handles = config.getResizeHandles(shape);
 
-        svg.selectAll(".resize-handle")
-            .data(handles)
-            .enter()
-            .append("rect")
-            .attr("x", d => d.x - 4)
-            .attr("y", d => d.y - 4)
-            .attr("width", 8)
-            .attr("height", 8)
-            .attr("class", "resize-handle")
-            .attr("data-index", (d, i) => i)
-            .style("fill", "white")
-            .style("stroke", "black")
-            .style("cursor", "nwse-resize")
-            .on("mousedown", (event, d) => {
-                if (isLocked) return;
-                event.stopPropagation();
-                isResizing = true;
-                resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
-                const [x, y] = d3.pointer(event, svg.node());
-                startX = x;
-                startY = y;
-            });
+        // Для круга используем круги для ручек, для других фигур - прямоугольники
+        const handleSelection = config.tag === 'circle' ? 'circle' : 'rect';
+
+        if (config.tag === 'circle') {
+            // Создаём ручки в виде кругов
+            svg.selectAll(".resize-handle")
+                .data(handles)
+                .enter()
+                .append("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 6) // Радиус ручки увеличен для удобства
+                .attr("class", "resize-handle")
+                .attr("data-index", (d, i) => i)
+                .style("fill", "white")
+                .style("stroke", "black")
+                .style("cursor", "nwse-resize")
+                .on("mousedown", (event, d) => {
+                    if (isLocked) return;
+                    event.stopPropagation();
+                    isResizing = true;
+                    resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
+                    const [x, y] = d3.pointer(event, svg.node());
+                    startX = x;
+                    startY = y;
+                });
+        } else {
+            // Создаём ручки в виде прямоугольников для других фигур
+            svg.selectAll(".resize-handle")
+                .data(handles)
+                .enter()
+                .append("rect")
+                .attr("x", d => d.x - 4)
+                .attr("y", d => d.y - 4)
+                .attr("width", 8)
+                .attr("height", 8)
+                .attr("class", "resize-handle")
+                .attr("data-index", (d, i) => i)
+                .style("fill", "white")
+                .style("stroke", "black")
+                .style("cursor", "nwse-resize")
+                .on("mousedown", (event, d) => {
+                    if (isLocked) return;
+                    event.stopPropagation();
+                    isResizing = true;
+                    resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
+                    const [x, y] = d3.pointer(event, svg.node());
+                    startX = x;
+                    startY = y;
+                });
+        }
 
         // Добавляем класс "selected" только к выбранной фигуре
         svg.selectAll(`${config.tag}`)
@@ -359,10 +382,19 @@
 
         const handles = config.getResizeHandles(shape);
 
-        svg.selectAll(".resize-handle")
-            .data(handles)
-            .attr("x", d => d.x - 4)
-            .attr("y", d => d.y - 4);
+        if (config.tag === 'circle') {
+            // Обновляем позиции ручек в виде кругов
+            svg.selectAll(".resize-handle")
+                .data(handles)
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+        } else {
+            // Обновляем позиции ручек в виде прямоугольников
+            svg.selectAll(".resize-handle")
+                .data(handles)
+                .attr("x", d => d.x - 4)
+                .attr("y", d => d.y - 4);
+        }
     }
 
     /**
@@ -633,8 +665,6 @@
 
         if (isResizing && selectedShape) {
             const [currentX, currentY] = d3.pointer(event, svg.node());
-            const dx = currentX - startX;
-            const dy = currentY - startY;
 
             const config = shapeConfigs[selectedShape.Type];
             if (!config) {
@@ -642,9 +672,17 @@
                 return;
             }
 
-            // Обновление свойств фигуры при изменении размеров
-            config.resize(selectedShape, resizeHandleIndex, dx, dy);
-            console.log(`mousemove: Resizing shape ID = ${selectedShape.id}, dx = ${dx}, dy = ${dy}`);
+            if (selectedShape.Type === 'circle') {
+                // Для круга устанавливаем радиус на основе текущей позиции курсора
+                config.resize(selectedShape, resizeHandleIndex, currentX, currentY);
+                console.log(`mousemove: Resizing shape ID = ${selectedShape.id}, new radius = ${selectedShape.r}`);
+            } else {
+                // Для других фигур используем существующую логику
+                const dx = currentX - startX;
+                const dy = currentY - startY;
+                config.resize(selectedShape, resizeHandleIndex, dx, dy);
+                console.log(`mousemove: Resizing shape ID = ${selectedShape.id}, dx = ${dx}, dy = ${dy}`);
+            }
 
             // Обновляем SVG элемент фигуры
             config.updateElement(selectedShape.element, selectedShape);
@@ -708,7 +746,7 @@
             const shape = shapes.find(s => s.id === datum.id);
             if (shape) {
                 selectShape(shape);
-                console.log(`Right-clicked on shape: ID = ${shape.id}`);
+                console.log(`Right-clicked on shape: ID = ${shape.id}, Type = ${shape.Type}`);
                 dotNet.invokeMethodAsync('OnShapeRightClicked', x, y, shape.id)
                     .then(() => console.log("OnShapeRightClicked invoked successfully."))
                     .catch(error => console.error("Invoke error:", error));
