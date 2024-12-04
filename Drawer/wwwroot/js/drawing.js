@@ -729,16 +729,55 @@
      */
     window.addEventListener("mouseup", () => {
         if (isLocked) return;
+
         if (isDrawing) {
             isDrawing = false;
             console.log("mouseup: Finished drawing.");
-            updateJson();
+
+            // Получаем последнюю фигуру из массива
+            const lastShape = shapes[shapes.length - 1];
+            let shouldRemove = false;
+
+            if (lastShape) {
+                if (lastShape.Type === 'rect') {
+                    // Проверяем, имеет ли прямоугольник ненулевую ширину и высоту
+                    if (lastShape.width === 0 || lastShape.height === 0) {
+                        shouldRemove = true;
+                    }
+                } else if (lastShape.Type === 'circle') {
+                    // Проверяем, имеет ли круг ненулевой радиус
+                    if (lastShape.r === 0) {
+                        shouldRemove = true;
+                    }
+                }
+                // Добавьте дополнительные проверки для других типов фигур, если необходимо
+            }
+
+            if (shouldRemove) {
+                console.log(`mouseup: Removing zero-size shape ID = ${lastShape.id}`);
+
+                // Удаляем фигуру из массива
+                shapes.pop();
+
+                // Удаляем SVG-элемент фигуры из DOM
+                if (lastShape.element) {
+                    lastShape.element.remove();
+                }
+
+                // Обновляем JSON после удаления фигуры
+                updateJson();
+            } else {
+                // Если фигура имеет ненулевые размеры, просто обновляем JSON
+                updateJson();
+            }
         }
+
         if (isMoving) {
             isMoving = false;
             console.log("mouseup: Finished moving.");
             updateJson();
         }
+
         if (isResizing) {
             isResizing = false;
             console.log("mouseup: Finished resizing.");
