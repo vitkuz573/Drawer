@@ -63,8 +63,9 @@
                     event.stopPropagation();
                     isResizing = true;
                     resizeHandleIndex = d3.select(event.currentTarget).attr("data-index");
-                    startX = event.clientX;
-                    startY = event.clientY;
+                    const [x, y] = d3.pointer(event, svg.node());
+                    startX = x;
+                    startY = y;
                 });
         }
 
@@ -228,7 +229,7 @@
 
         if (event.button !== 0) return;
 
-        const [x, y] = d3.pointer(event);
+        const [x, y] = d3.pointer(event, svg.node());
 
         const target = event.target;
         const datum = d3.select(target).datum();
@@ -236,8 +237,8 @@
         if (datum) {
             selectShape(datum);
             isMoving = true;
-            startX = event.clientX;
-            startY = event.clientY;
+            startX = x;
+            startY = y;
             return;
         }
 
@@ -284,11 +285,9 @@
     window.addEventListener("mousemove", (event) => {
         if (isLocked) return;
 
-        if (isDrawing && currentElement) {
-            const [x, y] = d3.pointer(event, svg.node());
-            const currentX = x;
-            const currentY = y;
+        const [currentX, currentY] = d3.pointer(event, svg.node());
 
+        if (isDrawing && currentElement) {
             if (currentTool === "rect") {
                 const width = currentX - startX;
                 const height = currentY - startY;
@@ -310,8 +309,8 @@
         }
 
         if (isMoving && selectedShapeId) {
-            const dx = event.clientX - startX;
-            const dy = event.clientY - startY;
+            const dx = currentX - startX;
+            const dy = currentY - startY;
 
             const shape = shapes.find(s => s.Id === selectedShapeId);
             if (shape && shape.Type === "rect") {
@@ -319,7 +318,7 @@
                 shape.Y += dy;
 
                 svg.selectAll("rect")
-                    .filter(d => d.Id === shape.Id)
+                    .filter(d => d && d.Id === shape.Id)
                     .attr("x", shape.X)
                     .attr("y", shape.Y);
 
@@ -332,15 +331,16 @@
                 updateResizeHandles(shape);
             }
 
-            startX = event.clientX;
-            startY = event.clientY;
+            startX = currentX;
+            startY = currentY;
 
             updateJson();
         }
 
         if (isResizing && selectedShapeId) {
-            const dx = event.clientX - startX;
-            const dy = event.clientY - startY;
+            const [currentX, currentY] = d3.pointer(event, svg.node());
+            const dx = currentX - startX;
+            const dy = currentY - startY;
 
             const shape = shapes.find(s => s.Id === selectedShapeId);
             if (shape && shape.Type === "rect") {
@@ -367,15 +367,21 @@
                         break;
                 }
 
-                if (shape.Width < 0) {
-                    shape.Width = 0;
+                if (shape.Width < 10) {
+                    shape.Width = 10;
+                    if (resizeHandleIndex === "0" || resizeHandleIndex === "2") {
+                        shape.X = shape.X + shape.Width - 10;
+                    }
                 }
-                if (shape.Height < 0) {
-                    shape.Height = 0;
+                if (shape.Height < 10) {
+                    shape.Height = 10;
+                    if (resizeHandleIndex === "0" || resizeHandleIndex === "1") {
+                        shape.Y = shape.Y + shape.Height - 10;
+                    }
                 }
 
                 svg.selectAll("rect")
-                    .filter(d => d.Id === shape.Id)
+                    .filter(d => d && d.Id === shape.Id)
                     .attr("x", shape.X)
                     .attr("y", shape.Y)
                     .attr("width", shape.Width)
@@ -392,8 +398,8 @@
                 updateResizeHandles(shape);
             }
 
-            startX = event.clientX;
-            startY = event.clientY;
+            startX = currentX;
+            startY = currentY;
 
             updateJson();
         }
