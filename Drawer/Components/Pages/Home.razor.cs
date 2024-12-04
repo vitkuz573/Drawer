@@ -115,7 +115,8 @@ public partial class Home : ComponentBase, IDisposable
         InvokeAsync(StateHasChanged);
     }
 
-    private void HideContextMenu()
+    [JSInvokable]
+    public void HideContextMenu()
     {
         _isContextMenuVisible = false;
 

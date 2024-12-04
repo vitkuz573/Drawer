@@ -20,6 +20,26 @@
 
     const dotNet = dotNetHelper;
 
+    // Глобальный обработчик кликов для скрытия контекстного меню при клике вне его
+    document.addEventListener("click", (event) => {
+        const contextMenu = document.getElementById("context-menu");
+        if (contextMenu && !_isClickInsideContextMenu(event)) {
+            dotNet.invokeMethodAsync('HideContextMenu')
+                .catch(error => console.error("HideContextMenu error:", error));
+        }
+    });
+
+    /**
+     * Проверяет, был ли клик внутри контекстного меню.
+     * @param {Event} event - Событие клика.
+     * @returns {boolean} - true, если клик внутри меню, иначе false.
+     */
+    function _isClickInsideContextMenu(event) {
+        const contextMenu = document.getElementById("context-menu");
+        if (!contextMenu) return false;
+        return contextMenu.contains(event.target);
+    }
+
     /**
      * Генерирует уникальный идентификатор для фигур.
      * @returns {string} - Уникальный идентификатор.
@@ -310,9 +330,6 @@
 
         const handles = config.getResizeHandles(shape);
 
-        // Для круга используем круги для ручек, для других фигур - прямоугольники
-        const handleSelection = config.tag === 'circle' ? 'circle' : 'rect';
-
         if (config.tag === 'circle') {
             // Создаём ручки в виде кругов
             svg.selectAll(".resize-handle")
@@ -587,6 +604,10 @@
                 startX = x;
                 startY = y;
                 console.log(`mousedown: Selected shape ID = ${shape.id} for moving.`);
+
+                // Скрываем контекстное меню при начале перемещения
+                dotNet.invokeMethodAsync('HideContextMenu')
+                    .catch(error => console.error("HideContextMenu error:", error));
             }
             return;
         }
