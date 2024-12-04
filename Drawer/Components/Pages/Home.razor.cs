@@ -122,11 +122,11 @@ public partial class Home : ComponentBase, IDisposable
         }
     }
 
-    private async Task CustomAction()
+    private async Task GetShapeId()
     {
         if (_selectedShape != null)
         {
-            await JsRuntime.InvokeVoidAsync("alert", $"Пользовательское действие для фигуры ID: {_selectedShape.Id}");
+            await JsRuntime.InvokeVoidAsync("alert", $"ID: {_selectedShape.Id}");
 
             HideContextMenu();
         }
