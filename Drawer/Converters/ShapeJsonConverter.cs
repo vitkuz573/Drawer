@@ -21,6 +21,7 @@ public class ShapeJsonConverter : JsonConverter<Shape>
         return type switch
         {
             "rect" => JsonSerializer.Deserialize<Rectangle>(jsonObject.GetRawText(), options),
+            "circle" => JsonSerializer.Deserialize<Rectangle>(jsonObject.GetRawText(), options),
             _ => throw new NotSupportedException($"Тип фигуры '{type}' не поддерживается."),
         };
     }
@@ -31,6 +32,9 @@ public class ShapeJsonConverter : JsonConverter<Shape>
         {
             case Rectangle rect:
                 JsonSerializer.Serialize(writer, rect, options);
+                break;
+            case Circle circle:
+                JsonSerializer.Serialize(writer, circle, options);
                 break;
             default:
                 throw new NotSupportedException($"Тип фигуры '{value.GetType()}' не поддерживается для сериализации.");
