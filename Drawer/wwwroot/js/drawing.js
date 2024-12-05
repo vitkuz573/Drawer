@@ -584,8 +584,6 @@
         const config = shapeConfigs[selectedShapes[0].type];
         if (!config) return;
 
-        selectionRect = config.createSelectionBox(selectedShapes);
-
         createResizeHandles(selectedShapes);
     }
 
