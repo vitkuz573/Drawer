@@ -29,7 +29,7 @@
         }
 
         const target = event.target;
-        const isShape = target.dataset.id !== null;
+        const isShape = target.dataset.id && shapes.some(shape => shape.id === target.dataset.id) && Object.values(shapeConfigs).some(config => config.tag === target.tagName.toLowerCase());
         const isResizeHandle = target.classList.contains('resize-handle');
 
         if (!isShape && !isResizeHandle && !_isClickInsideContextMenu(event)) {
