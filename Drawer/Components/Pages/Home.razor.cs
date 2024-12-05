@@ -53,7 +53,7 @@ public partial class Home : ComponentBase, IDisposable
 
     private async Task OnColorChanged(ChangeEventArgs e)
     {
-        SelectedColor = e.Value?.ToString() ?? "#0000ff";
+        SelectedColor = e.Value?.ToString() ?? "#8b00ff";
 
         if (!string.IsNullOrEmpty(SelectedColor))
         {
