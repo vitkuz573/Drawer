@@ -75,6 +75,7 @@ public partial class Home : ComponentBase, IDisposable
         if (string.IsNullOrWhiteSpace(JsonInput))
         {
             Shapes = [];
+            
             await JsRuntime.InvokeVoidAsync("updateShapesFromJson", "[]");
             
             return;
@@ -83,6 +84,7 @@ public partial class Home : ComponentBase, IDisposable
         try
         {
             Shapes = JsonSerializer.Deserialize<List<Shape>>(JsonInput) ?? [];
+            
             await JsRuntime.InvokeVoidAsync("updateShapesFromJson", JsonInput);
         }
         catch (JsonException ex)
