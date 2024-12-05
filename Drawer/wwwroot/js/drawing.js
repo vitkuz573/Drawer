@@ -125,7 +125,10 @@
             /**
              * Обновляет свойства прямоугольника при изменении размеров.
              */
-            resize: (shape, handleIndex, dx, dy) => {
+            resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
+                const dx = currentX - startX;
+                const dy = currentY - startY;
+
                 switch (handleIndex) {
                     case "0":
                         shape.x += dx;
@@ -284,7 +287,7 @@
             /**
              * Обновляет свойства круга при изменении размеров.
              */
-            resize: (shape, handleIndex, currentX, currentY) => {
+            resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
                 const dx = currentX - shape.cx;
                 const dy = currentY - shape.cy;
                 const newR = Math.sqrt(dx * dx + dy * dy);
@@ -683,7 +686,6 @@
             }
 
             config.updateShapeOnDraw(shape, currentX, currentY, startX, startY);
-
             config.updateElement(shape.element, shape);
             updateJson();
         }
@@ -698,7 +700,6 @@
             }
 
             config.updateShapeOnMove(selectedShape, dx, dy);
-
             config.updateElement(selectedShape.element, selectedShape);
 
             if (selectionBox) {
@@ -719,13 +720,7 @@
                 return;
             }
 
-            if (selectedShape.type === 'circle') {
-                config.resize(selectedShape, resizeHandleIndex, currentX, currentY);
-            } else {
-                const dx = currentX - startX;
-                const dy = currentY - startY;
-                config.resize(selectedShape, resizeHandleIndex, dx, dy);
-            }
+            config.resize(selectedShape, resizeHandleIndex, currentX, currentY, startX, startY);
 
             config.updateElement(selectedShape.element, selectedShape);
 
@@ -810,4 +805,300 @@
             clearSelection();
         }
     });
+};
+
+/**
+ * Обновленные методы resize в shapeConfigs
+ */
+const shapeConfigs = {
+    rect: {
+        tag: 'rect',
+        defaultProps: {
+            fill: '#0000ff',
+            stroke: '#0000ff',
+            'stroke-width': 2,
+            opacity: 1
+        },
+        /**
+         * Создаёт объект фигуры прямоугольника.
+         */
+        createShape: (id, x, y, color) => ({
+            id,
+            type: 'rect',
+            x,
+            y,
+            width: 0,
+            height: 0,
+            fill: color,
+            stroke: color,
+            strokeWidth: 2,
+            opacity: 1
+        }),
+        /**
+         * Создаёт SVG элемент для прямоугольника.
+         */
+        createElement: (shape) => {
+            const rect = document.createElementNS(svgNS, 'rect');
+            rect.setAttribute('x', shape.x);
+            rect.setAttribute('y', shape.y);
+            rect.setAttribute('width', shape.width);
+            rect.setAttribute('height', shape.height);
+            rect.setAttribute('fill', shape.fill);
+            rect.setAttribute('stroke', shape.stroke);
+            rect.setAttribute('stroke-width', shape.strokeWidth);
+            rect.setAttribute('opacity', shape.opacity);
+            rect.dataset.id = shape.id;
+            svg.appendChild(rect);
+            return rect;
+        },
+        /**
+         * Обновляет свойства SVG элемента прямоугольника.
+         */
+        updateElement: (element, shape) => {
+            element.setAttribute('x', shape.x);
+            element.setAttribute('y', shape.y);
+            element.setAttribute('width', shape.width);
+            element.setAttribute('height', shape.height);
+            element.setAttribute('fill', shape.fill);
+            element.setAttribute('stroke', shape.stroke);
+            element.setAttribute('stroke-width', shape.strokeWidth);
+            element.setAttribute('opacity', shape.opacity);
+        },
+        /**
+         * Возвращает позиции ручек изменения размера для прямоугольника.
+         */
+        getResizeHandles: (shape) => ([
+            { x: shape.x, y: shape.y },
+            { x: shape.x + shape.width, y: shape.y },
+            { x: shape.x, y: shape.y + shape.height },
+            { x: shape.x + shape.width, y: shape.y + shape.height }
+        ]),
+        /**
+         * Обновляет свойства прямоугольника при изменении размеров.
+         */
+        resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
+            const dx = currentX - startX;
+            const dy = currentY - startY;
+
+            switch (handleIndex) {
+                case "0":
+                    shape.x += dx;
+                    shape.y += dy;
+                    shape.width -= dx;
+                    shape.height -= dy;
+                    break;
+                case "1":
+                    shape.y += dy;
+                    shape.width += dx;
+                    shape.height -= dy;
+                    break;
+                case "2":
+                    shape.x += dx;
+                    shape.width -= dx;
+                    shape.height += dy;
+                    break;
+                case "3":
+                    shape.width += dx;
+                    shape.height += dy;
+                    break;
+            }
+
+            if (shape.width < 10) {
+                shape.width = 10;
+                if (handleIndex === "0" || handleIndex === "2") {
+                    shape.x = shape.x + shape.width - 10;
+                }
+            }
+            if (shape.height < 10) {
+                shape.height = 10;
+                if (handleIndex === "0" || handleIndex === "1") {
+                    shape.y = shape.y + shape.height - 10;
+                }
+            }
+        },
+        /**
+         * Обновляет свойства фигуры при рисовании.
+         */
+        updateShapeOnDraw: (shape, currentX, currentY, startX, startY) => {
+            const width = currentX - startX;
+            const height = currentY - startY;
+
+            shape.width = Math.abs(width);
+            shape.height = Math.abs(height);
+            shape.x = width < 0 ? currentX : startX;
+            shape.y = height < 0 ? currentY : startY;
+        },
+        /**
+         * Обновляет свойства фигуры при перемещении.
+         */
+        updateShapeOnMove: (shape, dx, dy) => {
+            shape.x += dx;
+            shape.y += dy;
+        },
+        /**
+         * Обновляет рамку выделения для прямоугольника.
+         */
+        updateSelectionBox: (selectionBox, shape) => {
+            selectionBox.setAttribute("x", shape.x);
+            selectionBox.setAttribute("y", shape.y);
+            selectionBox.setAttribute("width", shape.width);
+            selectionBox.setAttribute("height", shape.height);
+        },
+        /**
+         * Создаёт рамку выделения для прямоугольника.
+         */
+        createSelectionBox: (shape) => {
+            const box = document.createElementNS(svgNS, 'rect');
+            box.setAttribute("x", shape.x);
+            box.setAttribute("y", shape.y);
+            box.setAttribute("width", shape.width);
+            box.setAttribute("height", shape.height);
+            box.setAttribute("class", "selection-box");
+            box.style.fill = "none";
+            box.style.stroke = "blue";
+            box.style.strokeDasharray = "4";
+            svg.appendChild(box);
+            return box;
+        },
+        /**
+         * Обновляет цвет фигуры.
+         */
+        updateColor: (shape, color) => {
+            shape.fill = color;
+            shape.stroke = color;
+        },
+        /**
+         * Проверяет, должна ли фигура быть удалена.
+         * @param {Object} shape - Фигура для проверки.
+         * @returns {boolean} - true, если фигура должна быть удалена, иначе false.
+         */
+        shouldRemove: (shape) => {
+            return shape.width === 0 || shape.height === 0;
+        }
+    },
+    circle: {
+        tag: 'circle',
+        defaultProps: {
+            fill: '#ff0000',
+            stroke: '#ff0000',
+            'stroke-width': 2,
+            opacity: 1
+        },
+        /**
+         * Создаёт объект фигуры круга.
+         */
+        createShape: (id, x, y, color) => ({
+            id,
+            type: 'circle',
+            cx: x,
+            cy: y,
+            r: 0,
+            fill: color,
+            stroke: color,
+            strokeWidth: 2,
+            opacity: 1
+        }),
+        /**
+         * Создаёт SVG элемент для круга.
+         */
+        createElement: (shape) => {
+            const circle = document.createElementNS(svgNS, 'circle');
+            circle.setAttribute('cx', shape.cx);
+            circle.setAttribute('cy', shape.cy);
+            circle.setAttribute('r', shape.r);
+            circle.setAttribute('fill', shape.fill);
+            circle.setAttribute('stroke', shape.stroke);
+            circle.setAttribute('stroke-width', shape.strokeWidth);
+            circle.setAttribute('opacity', shape.opacity);
+            circle.dataset.id = shape.id;
+            svg.appendChild(circle);
+            return circle;
+        },
+        /**
+         * Обновляет свойства SVG элемента круга.
+         */
+        updateElement: (element, shape) => {
+            element.setAttribute('cx', shape.cx);
+            element.setAttribute('cy', shape.cy);
+            element.setAttribute('r', shape.r);
+            element.setAttribute('fill', shape.fill);
+            element.setAttribute('stroke', shape.stroke);
+            element.setAttribute('stroke-width', shape.strokeWidth);
+            element.setAttribute('opacity', shape.opacity);
+        },
+        /**
+         * Возвращает позиции ручек изменения размера для круга.
+         */
+        getResizeHandles: (shape) => ([
+            { x: shape.cx + shape.r, y: shape.cy },
+            { x: shape.cx - shape.r, y: shape.cy },
+            { x: shape.cx, y: shape.cy + shape.r },
+            { x: shape.cx, y: shape.cy - shape.r }
+        ]),
+        /**
+         * Обновляет свойства круга при изменении размеров.
+         */
+        resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
+            const dx = currentX - shape.cx;
+            const dy = currentY - shape.cy;
+            const newR = Math.sqrt(dx * dx + dy * dy);
+
+            shape.r = Math.max(newR, 10);
+        },
+        /**
+         * Обновляет свойства фигуры при рисовании.
+         */
+        updateShapeOnDraw: (shape, currentX, currentY, startX, startY) => {
+            const dx = currentX - startX;
+            const dy = currentY - startY;
+            shape.r = Math.sqrt(dx * dx + dy * dy);
+            shape.cx = startX;
+            shape.cy = startY;
+        },
+        /**
+         * Обновляет свойства фигуры при перемещении.
+         */
+        updateShapeOnMove: (shape, dx, dy) => {
+            shape.cx += dx;
+            shape.cy += dy;
+        },
+        /**
+         * Обновляет рамку выделения для круга.
+         */
+        updateSelectionBox: (selectionBox, shape) => {
+            selectionBox.setAttribute("cx", shape.cx);
+            selectionBox.setAttribute("cy", shape.cy);
+            selectionBox.setAttribute("r", shape.r);
+        },
+        /**
+         * Создаёт рамку выделения для круга.
+         */
+        createSelectionBox: (shape) => {
+            const box = document.createElementNS(svgNS, 'circle');
+            box.setAttribute("cx", shape.cx);
+            box.setAttribute("cy", shape.cy);
+            box.setAttribute("r", shape.r);
+            box.setAttribute("class", "selection-box");
+            box.style.fill = "none";
+            box.style.stroke = "blue";
+            box.style.strokeDasharray = "4";
+            svg.appendChild(box);
+            return box;
+        },
+        /**
+         * Обновляет цвет фигуры.
+         */
+        updateColor: (shape, color) => {
+            shape.fill = color;
+            shape.stroke = color;
+        },
+        /**
+         * Проверяет, должна ли фигура быть удалена.
+         * @param {Object} shape - Фигура для проверки.
+         * @returns {boolean} - true, если фигура должна быть удалена, иначе false.
+         */
+        shouldRemove: (shape) => {
+            return shape.r === 0;
+        }
+    }
 };
