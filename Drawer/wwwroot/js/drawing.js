@@ -29,7 +29,7 @@
         }
 
         const target = event.target;
-        const isShape = target.getAttribute('data-id') !== null;
+        const isShape = target.dataset.id !== null;
         const isResizeHandle = target.classList.contains('resize-handle');
 
         if (!isShape && !isResizeHandle && !_isClickInsideContextMenu(event)) {
@@ -96,7 +96,7 @@
                 rect.setAttribute('stroke', shape.stroke);
                 rect.setAttribute('stroke-width', shape.strokeWidth);
                 rect.setAttribute('opacity', shape.opacity);
-                rect.setAttribute('data-id', shape.id);
+                rect.dataset.id = shape.id;
                 svg.appendChild(rect);
                 return rect;
             },
@@ -256,7 +256,7 @@
                 circle.setAttribute('stroke', shape.stroke);
                 circle.setAttribute('stroke-width', shape.strokeWidth);
                 circle.setAttribute('opacity', shape.opacity);
-                circle.setAttribute('data-id', shape.id);
+                circle.dataset.id = shape.id;
                 svg.appendChild(circle);
                 return circle;
             },
@@ -397,7 +397,7 @@
             svg.appendChild(handleElement);
         });
 
-        const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
+        const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
         shapeElements.forEach(el => el.classList.add("selected"));
 
         selectedShape = shape;
@@ -446,9 +446,8 @@
             selectionBox = null;
         }
         removeResizeHandles();
-        // Удаляем класс 'selected' у всех фигур
         shapes.forEach(shape => {
-            const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
+            const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
             shapeElements.forEach(el => el.classList.remove("selected"));
         });
 
@@ -498,7 +497,7 @@
             return;
         }
 
-        const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
+        const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
         shapeElements.forEach(el => el.remove());
 
         shapes.splice(shapeIndex, 1);
@@ -514,7 +513,7 @@
         currentColor = color;
 
         if (currentElement) {
-            const shapeId = currentElement.getAttribute('data-id');
+            const shapeId = currentElement.dataset.id;
             const shape = shapes.find(s => s.id === shapeId);
             if (shape) {
                 shapeConfigs[shape.type].updateColor(shape, color);
@@ -581,7 +580,7 @@
             shapes.forEach(shape => {
                 const config = shapeConfigs[shape.type];
                 if (config) {
-                    const shapeElements = svg.querySelectorAll(`[data-id='${shape.id}']`);
+                    const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
                     shapeElements.forEach(el => el.remove());
                 }
             });
@@ -641,7 +640,7 @@
         const y = event.clientY - rect.top;
 
         const target = event.target;
-        const shapeId = target.getAttribute('data-id');
+        const shapeId = target.dataset.id;
 
         if (shapeId) {
             const shape = shapes.find(s => s.id === shapeId);
@@ -801,7 +800,7 @@
         const y = event.clientY - rect.top;
 
         const target = event.target;
-        const shapeId = target.getAttribute('data-id');
+        const shapeId = target.dataset.id;
 
         if (shapeId) {
             const shape = shapes.find(s => s.id === shapeId);
