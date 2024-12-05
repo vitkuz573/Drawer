@@ -25,7 +25,7 @@
         @if (_isContextMenuVisible)
         {
             <div id="context-menu" style="top:@($"{_contextMenuYpx}px"); left:@($"{_contextMenuXpx}px"); display: block;"
-                 class="absolute z-50 w-40 rounded-md border border-gray-300 bg-white shadow-lg">
+                 class="z-[1000] absolute min-w-[150px] rounded-md border border-gray-300 bg-white shadow-lg">
                 <ul class="m-0 list-none p-0">
                     <li @onclick="DeleteShape" class="cursor-pointer p-2 hover:bg-gray-100">Удалить фигуру</li>
                     <li @onclick="GetShapeId" class="cursor-pointer p-2 hover:bg-gray-100">Получить ID</li>
@@ -71,31 +71,5 @@
     .selected {
         stroke: blue;
         stroke-width: 2;
-    }
-
-    #context-menu {
-        position: absolute;
-        background-color: white;
-        border: 1px solid #ccc;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        display: none;
-        z-index: 1000;
-        min-width: 150px;
-        border-radius: 4px;
-    }
-
-    #context-menu ul {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-    }
-
-    #context-menu li {
-        padding: 8px 12px;
-        cursor: pointer;
-    }
-
-    #context-menu li:hover {
-        background-color: #f0f0f0;
     }
 </style>
