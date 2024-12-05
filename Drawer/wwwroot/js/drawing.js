@@ -443,15 +443,23 @@
     }
 
     /**
-     * Очищает текущий выбор и удаляет рамку выделения вокруг фигур.
+     * Очищает текущий выбор и удаляет рамки выделения.
      */
     function clearSelection() {
         console.log("Clearing selection");
         selectedShapes = [];
+
+        // Удаляем selectionBox
         if (selectionRect) {
             selectionRect.remove();
             selectionRect = null;
         }
+
+        // Удаляем все selectionDragRect элементы
+        const existingDragBoxes = svg.querySelectorAll('rect.selection-drag-box');
+        existingDragBoxes.forEach(box => box.remove());
+        selectionDragRect = null;
+
         removeResizeHandles();
         shapes.forEach(shape => {
             const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
@@ -878,7 +886,8 @@
 
             if (newlySelectedShapes.length > 0) {
                 selectShapes(newlySelectedShapes);
-                selectionDragRect.remove();
+                const existingDragBoxes = svg.querySelectorAll('rect.selection-drag-box');
+                existingDragBoxes.forEach(box => box.remove());
                 selectionDragRect = null;
             } else {
                 clearSelection();
