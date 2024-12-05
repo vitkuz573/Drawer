@@ -980,12 +980,12 @@
 
             if (newlySelectedShapes.length > 0) {
                 selectShapes(newlySelectedShapes);
+                selectionRect.remove();
+                selectionRect = null;
             } else {
                 clearSelection();
             }
 
-            selectionRect.remove();
-            selectionRect = null;
             return;
         }
 
