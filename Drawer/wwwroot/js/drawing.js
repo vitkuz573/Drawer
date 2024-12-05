@@ -147,9 +147,6 @@
              * @param {number} startY - Начальная Y-координата изменения размера.
              */
             resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
-                const dx = currentX - startX;
-                const dy = currentY - startY;
-
                 let newX = shape.x;
                 let newY = shape.y;
                 let newWidth = shape.width;
@@ -157,24 +154,24 @@
 
                 switch (handleIndex) {
                     case "0":
-                        newX += dx;
-                        newY += dy;
-                        newWidth -= dx;
-                        newHeight -= dy;
+                        newX = currentX;
+                        newY = currentY;
+                        newWidth = shape.x + shape.width - currentX;
+                        newHeight = shape.y + shape.height - currentY;
                         break;
                     case "1":
-                        newY += dy;
-                        newWidth += dx;
-                        newHeight -= dy;
+                        newY = currentY;
+                        newWidth = currentX - shape.x;
+                        newHeight = shape.y + shape.height - currentY;
                         break;
                     case "2":
-                        newX += dx;
-                        newWidth -= dx;
-                        newHeight += dy;
+                        newX = currentX;
+                        newWidth = shape.x + shape.width - currentX;
+                        newHeight = currentY - shape.y;
                         break;
                     case "3":
-                        newWidth += dx;
-                        newHeight += dy;
+                        newWidth = currentX - shape.x;
+                        newHeight = currentY - shape.y;
                         break;
                 }
 
