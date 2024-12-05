@@ -119,42 +119,56 @@
                 const dx = currentX - startX;
                 const dy = currentY - startY;
 
+                let newX = shape.x;
+                let newY = shape.y;
+                let newWidth = shape.width;
+                let newHeight = shape.height;
+
                 switch (handleIndex) {
                     case "0":
-                        shape.x += dx;
-                        shape.y += dy;
-                        shape.width -= dx;
-                        shape.height -= dy;
+                        newX += dx;
+                        newY += dy;
+                        newWidth -= dx;
+                        newHeight -= dy;
                         break;
                     case "1":
-                        shape.y += dy;
-                        shape.width += dx;
-                        shape.height -= dy;
+                        newY += dy;
+                        newWidth += dx;
+                        newHeight -= dy;
                         break;
                     case "2":
-                        shape.x += dx;
-                        shape.width -= dx;
-                        shape.height += dy;
+                        newX += dx;
+                        newWidth -= dx;
+                        newHeight += dy;
                         break;
                     case "3":
-                        shape.width += dx;
-                        shape.height += dy;
+                        newWidth += dx;
+                        newHeight += dy;
                         break;
                 }
 
-                // Обеспечиваем минимальные размеры
-                if (shape.width < 10) {
-                    shape.width = 10;
+                // Проверка и установка минимальных размеров
+                if (newWidth < 10) {
+                    // Корректируем изменение ширины и позиции X
                     if (handleIndex === "0" || handleIndex === "2") {
-                        shape.x = shape.x + shape.width - 10;
+                        newX -= (10 - newWidth);
                     }
+                    newWidth = 10;
                 }
-                if (shape.height < 10) {
-                    shape.height = 10;
+
+                if (newHeight < 10) {
+                    // Корректируем изменение высоты и позиции Y
                     if (handleIndex === "0" || handleIndex === "1") {
-                        shape.y = shape.y + shape.height - 10;
+                        newY -= (10 - newHeight);
                     }
+                    newHeight = 10;
                 }
+
+                // Применяем изменения только если размеры не меньше минимальных
+                shape.x = newX;
+                shape.y = newY;
+                shape.width = newWidth;
+                shape.height = newHeight;
             },
             /**
              * Обновляет свойства фигуры при рисовании.
@@ -306,6 +320,7 @@
                 const dy = currentY - shape.cy;
                 const newR = Math.sqrt(dx * dx + dy * dy);
 
+                // Устанавливаем минимальный радиус
                 shape.r = Math.max(newR, 10);
             },
             /**
