@@ -576,7 +576,6 @@
                 return;
             }
 
-            // Удаляем существующие фигуры из SVG
             shapes.forEach(shape => {
                 const config = shapeConfigs[shape.type];
                 if (config) {
@@ -586,7 +585,6 @@
             });
             shapes = [];
 
-            // Добавляем новые фигуры из JSON
             shapesData.forEach(shapeData => {
                 const config = shapeConfigs[shapeData.type];
                 if (config) {
@@ -633,7 +631,7 @@
 
         event.preventDefault();
 
-        if (event.button !== 0) return; // Реагируем только на левый клик
+        if (event.button !== 0) return;
 
         const rect = svg.getBoundingClientRect();
         const x = event.clientX - rect.left;
