@@ -15,10 +15,10 @@
     let resizeHandleIndex = -1;
     let selectionStartX, selectionStartY;
     let selectionRect = null;
-    let currentTool = 'rect';
-    let currentColor = '#0000ff';
+    let currentTool;
+    let currentColor;
     let currentElement = null;
-    let isLocked = false;
+    let isLocked;
     let startX = 0, startY = 0;
     let resizeStartX = 0, resizeStartY = 0;
 
