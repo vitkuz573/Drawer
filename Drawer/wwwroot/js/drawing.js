@@ -13,51 +13,17 @@
     let isResizing = false;
     let resizeHandleIndex = -1;
     let startX, startY;
-    let currentTool;
-    let currentColor;
+    let currentTool = 'rect'; // По умолчанию инструмент — прямоугольник
+    let currentColor = '#0000ff'; // По умолчанию синий цвет
     let currentElement = null;
-    let isLocked;
+    let isLocked = false;
     let selectionBox = null;
 
     const dotNet = dotNetHelper;
 
-    document.addEventListener("click", (event) => {
-        const contextMenu = document.getElementById("context-menu");
-
-        if (contextMenu && !_isClickInsideContextMenu(event)) {
-            dotNet.invokeMethodAsync('HideContextMenu');
-        }
-
-        const target = event.target;
-        const isShape = target.dataset.id && shapes.some(shape => shape.id === target.dataset.id) && Object.values(shapeConfigs).some(config => config.tag === target.tagName.toLowerCase());
-        const isResizeHandle = target.classList.contains('resize-handle');
-
-        if (!isShape && !isResizeHandle && !_isClickInsideContextMenu(event)) {
-            clearSelection();
-        }
-    });
-
-    /**
-     * Проверяет, был ли клик внутри контекстного меню.
-     * @param {Event} event - Событие клика.
-     * @returns {boolean} - true, если клик внутри меню, иначе false.
-     */
-    function _isClickInsideContextMenu(event) {
-        const contextMenu = document.getElementById("context-menu");
-        if (!contextMenu) return false;
-        return contextMenu.contains(event.target);
-    }
-
-    /**
-     * Генерирует уникальный идентификатор (UUID v4).
-     * @returns {string} - Уникальный идентификатор.
-     */
-    function generateUniqueId() {
-        return crypto.randomUUID();
-    }
-
     /**
      * Конфигурационный объект для всех типов фигур.
+     * Перемещен внутрь функции initialize для доступа к svgNS.
      */
     const shapeConfigs = {
         rect: {
@@ -123,6 +89,30 @@
                 { x: shape.x + shape.width, y: shape.y + shape.height }
             ]),
             /**
+             * Создаёт ручку изменения размера для прямоугольника.
+             * @param {Object} handle - Позиция ручки.
+             * @param {number} index - Индекс ручки.
+             * @returns {SVGElement} - Созданный элемент ручки.
+             */
+            createResizeHandle: (handle, index) => {
+                const handleElement = document.createElementNS(svgNS, 'rect');
+                handleElement.setAttribute('x', handle.x - 4);
+                handleElement.setAttribute('y', handle.y - 4);
+                handleElement.setAttribute('width', 8);
+                handleElement.setAttribute('height', 8);
+                return handleElement;
+            },
+            /**
+             * Обновляет ручку изменения размера при перемещении фигуры.
+             * @param {SVGElement} handleElement - Элемент ручки.
+             * @param {Object} handle - Новая позиция ручки.
+             * @param {number} index - Индекс ручки.
+             */
+            updateResizeHandle: (handleElement, handle, index) => {
+                handleElement.setAttribute('x', handle.x - 4);
+                handleElement.setAttribute('y', handle.y - 4);
+            },
+            /**
              * Обновляет свойства прямоугольника при изменении размеров.
              */
             resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
@@ -152,6 +142,7 @@
                         break;
                 }
 
+                // Обеспечиваем минимальные размеры
                 if (shape.width < 10) {
                     shape.width = 10;
                     if (handleIndex === "0" || handleIndex === "2") {
@@ -285,6 +276,29 @@
                 { x: shape.cx, y: shape.cy - shape.r }
             ]),
             /**
+             * Создаёт ручку изменения размера для круга.
+             * @param {Object} handle - Позиция ручки.
+             * @param {number} index - Индекс ручки.
+             * @returns {SVGElement} - Созданный элемент ручки.
+             */
+            createResizeHandle: (handle, index) => {
+                const handleElement = document.createElementNS(svgNS, 'circle');
+                handleElement.setAttribute('cx', handle.x);
+                handleElement.setAttribute('cy', handle.y);
+                handleElement.setAttribute('r', 6);
+                return handleElement;
+            },
+            /**
+             * Обновляет ручку изменения размера при перемещении фигуры.
+             * @param {SVGElement} handleElement - Элемент ручки.
+             * @param {Object} handle - Новая позиция ручки.
+             * @param {number} index - Индекс ручки.
+             */
+            updateResizeHandle: (handleElement, handle, index) => {
+                handleElement.setAttribute('cx', handle.x);
+                handleElement.setAttribute('cy', handle.y);
+            },
+            /**
              * Обновляет свойства круга при изменении размеров.
              */
             resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
@@ -367,19 +381,10 @@
         const handles = config.getResizeHandles(shape);
 
         handles.forEach((handle, index) => {
-            let handleElement;
-            if (config.tag === 'circle') {
-                handleElement = document.createElementNS(svgNS, 'circle');
-                handleElement.setAttribute('cx', handle.x);
-                handleElement.setAttribute('cy', handle.y);
-                handleElement.setAttribute('r', 6);
-            } else {
-                handleElement = document.createElementNS(svgNS, 'rect');
-                handleElement.setAttribute('x', handle.x - 4);
-                handleElement.setAttribute('y', handle.y - 4);
-                handleElement.setAttribute('width', 8);
-                handleElement.setAttribute('height', 8);
-            }
+            // Создание ручки через конфигурацию фигуры
+            const handleElement = config.createResizeHandle(handle, index);
+
+            // Общие настройки ручки
             handleElement.classList.add('resize-handle');
             handleElement.setAttribute('data-index', index.toString());
             handleElement.style.fill = "white";
@@ -387,6 +392,7 @@
             handleElement.style.cursor = "nwse-resize";
             handleElement.style.pointerEvents = "all";
 
+            // Добавление обработчика события mousedown на ручку
             handleElement.addEventListener('mousedown', (event) => {
                 if (isLocked) return;
                 event.stopPropagation();
@@ -429,13 +435,7 @@
 
         handleElements.forEach((handleElement, index) => {
             const handle = handles[index];
-            if (config.tag === 'circle') {
-                handleElement.setAttribute('cx', handle.x);
-                handleElement.setAttribute('cy', handle.y);
-            } else {
-                handleElement.setAttribute('x', handle.x - 4);
-                handleElement.setAttribute('y', handle.y - 4);
-            }
+            config.updateResizeHandle(handleElement, handle, index);
         });
     }
 
@@ -531,7 +531,11 @@
      * @param {string} tool - Название инструмента.
      */
     window.setTool = function (tool) {
-        currentTool = tool;
+        if (shapeConfigs[tool]) {
+            currentTool = tool;
+        } else {
+            console.warn(`Инструмент "${tool}" не поддерживается.`);
+        }
     }
 
     /**
@@ -579,6 +583,7 @@
                 return;
             }
 
+            // Удаление существующих фигур из SVG
             shapes.forEach(shape => {
                 const config = shapeConfigs[shape.type];
                 if (config) {
@@ -588,6 +593,7 @@
             });
             shapes = [];
 
+            // Создание новых фигур из JSON
             shapesData.forEach(shapeData => {
                 const config = shapeConfigs[shapeData.type];
                 if (config) {
@@ -634,7 +640,7 @@
 
         event.preventDefault();
 
-        if (event.button !== 0) return;
+        if (event.button !== 0) return; // Обработка только левого клика
 
         const rect = svg.getBoundingClientRect();
         const x = event.clientX - rect.left;
@@ -805,300 +811,44 @@
             clearSelection();
         }
     });
-};
 
-/**
- * Обновленные методы resize в shapeConfigs
- */
-const shapeConfigs = {
-    rect: {
-        tag: 'rect',
-        defaultProps: {
-            fill: '#0000ff',
-            stroke: '#0000ff',
-            'stroke-width': 2,
-            opacity: 1
-        },
-        /**
-         * Создаёт объект фигуры прямоугольника.
-         */
-        createShape: (id, x, y, color) => ({
-            id,
-            type: 'rect',
-            x,
-            y,
-            width: 0,
-            height: 0,
-            fill: color,
-            stroke: color,
-            strokeWidth: 2,
-            opacity: 1
-        }),
-        /**
-         * Создаёт SVG элемент для прямоугольника.
-         */
-        createElement: (shape) => {
-            const rect = document.createElementNS(svgNS, 'rect');
-            rect.setAttribute('x', shape.x);
-            rect.setAttribute('y', shape.y);
-            rect.setAttribute('width', shape.width);
-            rect.setAttribute('height', shape.height);
-            rect.setAttribute('fill', shape.fill);
-            rect.setAttribute('stroke', shape.stroke);
-            rect.setAttribute('stroke-width', shape.strokeWidth);
-            rect.setAttribute('opacity', shape.opacity);
-            rect.dataset.id = shape.id;
-            svg.appendChild(rect);
-            return rect;
-        },
-        /**
-         * Обновляет свойства SVG элемента прямоугольника.
-         */
-        updateElement: (element, shape) => {
-            element.setAttribute('x', shape.x);
-            element.setAttribute('y', shape.y);
-            element.setAttribute('width', shape.width);
-            element.setAttribute('height', shape.height);
-            element.setAttribute('fill', shape.fill);
-            element.setAttribute('stroke', shape.stroke);
-            element.setAttribute('stroke-width', shape.strokeWidth);
-            element.setAttribute('opacity', shape.opacity);
-        },
-        /**
-         * Возвращает позиции ручек изменения размера для прямоугольника.
-         */
-        getResizeHandles: (shape) => ([
-            { x: shape.x, y: shape.y },
-            { x: shape.x + shape.width, y: shape.y },
-            { x: shape.x, y: shape.y + shape.height },
-            { x: shape.x + shape.width, y: shape.y + shape.height }
-        ]),
-        /**
-         * Обновляет свойства прямоугольника при изменении размеров.
-         */
-        resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
-            const dx = currentX - startX;
-            const dy = currentY - startY;
+    /**
+     * Обработчик кликов по документу для скрытия контекстного меню при клике вне его.
+     */
+    document.addEventListener("click", (event) => {
+        const contextMenu = document.getElementById("context-menu");
 
-            switch (handleIndex) {
-                case "0":
-                    shape.x += dx;
-                    shape.y += dy;
-                    shape.width -= dx;
-                    shape.height -= dy;
-                    break;
-                case "1":
-                    shape.y += dy;
-                    shape.width += dx;
-                    shape.height -= dy;
-                    break;
-                case "2":
-                    shape.x += dx;
-                    shape.width -= dx;
-                    shape.height += dy;
-                    break;
-                case "3":
-                    shape.width += dx;
-                    shape.height += dy;
-                    break;
-            }
-
-            if (shape.width < 10) {
-                shape.width = 10;
-                if (handleIndex === "0" || handleIndex === "2") {
-                    shape.x = shape.x + shape.width - 10;
-                }
-            }
-            if (shape.height < 10) {
-                shape.height = 10;
-                if (handleIndex === "0" || handleIndex === "1") {
-                    shape.y = shape.y + shape.height - 10;
-                }
-            }
-        },
-        /**
-         * Обновляет свойства фигуры при рисовании.
-         */
-        updateShapeOnDraw: (shape, currentX, currentY, startX, startY) => {
-            const width = currentX - startX;
-            const height = currentY - startY;
-
-            shape.width = Math.abs(width);
-            shape.height = Math.abs(height);
-            shape.x = width < 0 ? currentX : startX;
-            shape.y = height < 0 ? currentY : startY;
-        },
-        /**
-         * Обновляет свойства фигуры при перемещении.
-         */
-        updateShapeOnMove: (shape, dx, dy) => {
-            shape.x += dx;
-            shape.y += dy;
-        },
-        /**
-         * Обновляет рамку выделения для прямоугольника.
-         */
-        updateSelectionBox: (selectionBox, shape) => {
-            selectionBox.setAttribute("x", shape.x);
-            selectionBox.setAttribute("y", shape.y);
-            selectionBox.setAttribute("width", shape.width);
-            selectionBox.setAttribute("height", shape.height);
-        },
-        /**
-         * Создаёт рамку выделения для прямоугольника.
-         */
-        createSelectionBox: (shape) => {
-            const box = document.createElementNS(svgNS, 'rect');
-            box.setAttribute("x", shape.x);
-            box.setAttribute("y", shape.y);
-            box.setAttribute("width", shape.width);
-            box.setAttribute("height", shape.height);
-            box.setAttribute("class", "selection-box");
-            box.style.fill = "none";
-            box.style.stroke = "blue";
-            box.style.strokeDasharray = "4";
-            svg.appendChild(box);
-            return box;
-        },
-        /**
-         * Обновляет цвет фигуры.
-         */
-        updateColor: (shape, color) => {
-            shape.fill = color;
-            shape.stroke = color;
-        },
-        /**
-         * Проверяет, должна ли фигура быть удалена.
-         * @param {Object} shape - Фигура для проверки.
-         * @returns {boolean} - true, если фигура должна быть удалена, иначе false.
-         */
-        shouldRemove: (shape) => {
-            return shape.width === 0 || shape.height === 0;
+        if (contextMenu && !_isClickInsideContextMenu(event)) {
+            dotNet.invokeMethodAsync('HideContextMenu');
         }
-    },
-    circle: {
-        tag: 'circle',
-        defaultProps: {
-            fill: '#ff0000',
-            stroke: '#ff0000',
-            'stroke-width': 2,
-            opacity: 1
-        },
-        /**
-         * Создаёт объект фигуры круга.
-         */
-        createShape: (id, x, y, color) => ({
-            id,
-            type: 'circle',
-            cx: x,
-            cy: y,
-            r: 0,
-            fill: color,
-            stroke: color,
-            strokeWidth: 2,
-            opacity: 1
-        }),
-        /**
-         * Создаёт SVG элемент для круга.
-         */
-        createElement: (shape) => {
-            const circle = document.createElementNS(svgNS, 'circle');
-            circle.setAttribute('cx', shape.cx);
-            circle.setAttribute('cy', shape.cy);
-            circle.setAttribute('r', shape.r);
-            circle.setAttribute('fill', shape.fill);
-            circle.setAttribute('stroke', shape.stroke);
-            circle.setAttribute('stroke-width', shape.strokeWidth);
-            circle.setAttribute('opacity', shape.opacity);
-            circle.dataset.id = shape.id;
-            svg.appendChild(circle);
-            return circle;
-        },
-        /**
-         * Обновляет свойства SVG элемента круга.
-         */
-        updateElement: (element, shape) => {
-            element.setAttribute('cx', shape.cx);
-            element.setAttribute('cy', shape.cy);
-            element.setAttribute('r', shape.r);
-            element.setAttribute('fill', shape.fill);
-            element.setAttribute('stroke', shape.stroke);
-            element.setAttribute('stroke-width', shape.strokeWidth);
-            element.setAttribute('opacity', shape.opacity);
-        },
-        /**
-         * Возвращает позиции ручек изменения размера для круга.
-         */
-        getResizeHandles: (shape) => ([
-            { x: shape.cx + shape.r, y: shape.cy },
-            { x: shape.cx - shape.r, y: shape.cy },
-            { x: shape.cx, y: shape.cy + shape.r },
-            { x: shape.cx, y: shape.cy - shape.r }
-        ]),
-        /**
-         * Обновляет свойства круга при изменении размеров.
-         */
-        resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
-            const dx = currentX - shape.cx;
-            const dy = currentY - shape.cy;
-            const newR = Math.sqrt(dx * dx + dy * dy);
 
-            shape.r = Math.max(newR, 10);
-        },
-        /**
-         * Обновляет свойства фигуры при рисовании.
-         */
-        updateShapeOnDraw: (shape, currentX, currentY, startX, startY) => {
-            const dx = currentX - startX;
-            const dy = currentY - startY;
-            shape.r = Math.sqrt(dx * dx + dy * dy);
-            shape.cx = startX;
-            shape.cy = startY;
-        },
-        /**
-         * Обновляет свойства фигуры при перемещении.
-         */
-        updateShapeOnMove: (shape, dx, dy) => {
-            shape.cx += dx;
-            shape.cy += dy;
-        },
-        /**
-         * Обновляет рамку выделения для круга.
-         */
-        updateSelectionBox: (selectionBox, shape) => {
-            selectionBox.setAttribute("cx", shape.cx);
-            selectionBox.setAttribute("cy", shape.cy);
-            selectionBox.setAttribute("r", shape.r);
-        },
-        /**
-         * Создаёт рамку выделения для круга.
-         */
-        createSelectionBox: (shape) => {
-            const box = document.createElementNS(svgNS, 'circle');
-            box.setAttribute("cx", shape.cx);
-            box.setAttribute("cy", shape.cy);
-            box.setAttribute("r", shape.r);
-            box.setAttribute("class", "selection-box");
-            box.style.fill = "none";
-            box.style.stroke = "blue";
-            box.style.strokeDasharray = "4";
-            svg.appendChild(box);
-            return box;
-        },
-        /**
-         * Обновляет цвет фигуры.
-         */
-        updateColor: (shape, color) => {
-            shape.fill = color;
-            shape.stroke = color;
-        },
-        /**
-         * Проверяет, должна ли фигура быть удалена.
-         * @param {Object} shape - Фигура для проверки.
-         * @returns {boolean} - true, если фигура должна быть удалена, иначе false.
-         */
-        shouldRemove: (shape) => {
-            return shape.r === 0;
+        const target = event.target;
+        const isShape = target.dataset.id &&
+            shapes.some(shape => shape.id === target.dataset.id) &&
+            Object.values(shapeConfigs).some(config => config.tag === target.tagName.toLowerCase());
+        const isResizeHandle = target.classList.contains('resize-handle');
+
+        if (!isShape && !isResizeHandle && !_isClickInsideContextMenu(event)) {
+            clearSelection();
         }
+    });
+
+    /**
+     * Проверяет, был ли клик внутри контекстного меню.
+     * @param {Event} event - Событие клика.
+     * @returns {boolean} - true, если клик внутри меню, иначе false.
+     */
+    function _isClickInsideContextMenu(event) {
+        const contextMenu = document.getElementById("context-menu");
+        if (!contextMenu) return false;
+        return contextMenu.contains(event.target);
+    }
+
+    /**
+     * Генерирует уникальный идентификатор (UUID v4).
+     * @returns {string} - Уникальный идентификатор.
+     */
+    function generateUniqueId() {
+        return crypto.randomUUID();
     }
 };
