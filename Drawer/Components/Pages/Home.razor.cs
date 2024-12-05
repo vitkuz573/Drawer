@@ -9,11 +9,11 @@ public partial class Home : ComponentBase, IDisposable
 {
     private string SelectedTool { get; set; } = "rect";
 
-    private string SelectedColor { get; set; } = "#0000ff";
+    private string SelectedColor { get; set; } = "#8b00ff";
 
     private bool IsLocked { get; set; }
 
-    private string JsonInput { get; set; } = "[]";
+    private string JsonInput { get; set; } = string.Empty;
 
     private ElementReference _svgElement;
     private Shape? _selectedShape;
@@ -70,12 +70,19 @@ public partial class Home : ComponentBase, IDisposable
 
     private async Task OnJsonInputChanged(ChangeEventArgs e)
     {
-        JsonInput = e.Value?.ToString() ?? "[]";
+        JsonInput = e.Value?.ToString() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(JsonInput))
+        {
+            Shapes = [];
+            await JsRuntime.InvokeVoidAsync("updateShapesFromJson", "[]");
+            
+            return;
+        }
 
         try
         {
             Shapes = JsonSerializer.Deserialize<List<Shape>>(JsonInput) ?? [];
-
             await JsRuntime.InvokeVoidAsync("updateShapesFromJson", JsonInput);
         }
         catch (JsonException ex)

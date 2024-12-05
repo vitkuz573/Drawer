@@ -570,8 +570,10 @@
      */
     window.updateShapesFromJson = function (json) {
         try {
-            const shapesData = JSON.parse(json);
+            const shapesData = json && json.trim() !== "" ? JSON.parse(json) : [];
+
             if (!Array.isArray(shapesData)) {
+                console.error("JSON не является массивом фигур.");
                 return;
             }
 
