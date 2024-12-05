@@ -502,29 +502,29 @@
 
         if (!shapes || shapes.length === 0) return;
 
-        if (shapes.length > 1) return;
-
         const shape = shapes[0];
         const config = shapeConfigs[shape.type];
         if (!config) return;
 
-        const handles = config.getResizeHandles(shape);
+        if (shapes.length === 1) {
+            const handles = config.getResizeHandles(shape);
 
-        handles.forEach((handle, index) => {
-            const handleElement = config.createResizeHandle(handle, index);
+            handles.forEach((handle, index) => {
+                const handleElement = config.createResizeHandle(handle, index);
 
-            handleElement.addEventListener('mousedown', (event) => {
-                if (isLocked) return;
-                event.stopPropagation();
-                isResizing = true;
-                resizeHandleIndex = event.currentTarget.getAttribute('data-index');
-                const rect = svg.getBoundingClientRect();
-                resizeStartX = event.clientX - rect.left;
-                resizeStartY = event.clientY - rect.top;
+                handleElement.addEventListener('mousedown', (event) => {
+                    if (isLocked) return;
+                    event.stopPropagation();
+                    isResizing = true;
+                    resizeHandleIndex = event.currentTarget.getAttribute('data-index');
+                    const rect = svg.getBoundingClientRect();
+                    resizeStartX = event.clientX - rect.left;
+                    resizeStartY = event.clientY - rect.top;
+                });
+
+                svg.appendChild(handleElement);
             });
-
-            svg.appendChild(handleElement);
-        });
+        }
 
         shapes.forEach(shape => {
             const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
@@ -907,13 +907,6 @@
                 config.updateShapeOnMove(shape, dx, dy);
                 config.updateElement(shape.element, shape);
             });
-
-            if (selectionRect) {
-                const config = shapeConfigs[selectedShapes[0].type];
-                if (config) {
-                    config.updateSelectionBox(selectionRect, selectedShapes);
-                }
-            }
 
             createResizeHandles(selectedShapes);
 
