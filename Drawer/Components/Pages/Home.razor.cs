@@ -16,7 +16,7 @@ public partial class Home : ComponentBase, IDisposable
     private string JsonInput { get; set; } = string.Empty;
 
     private ElementReference _svgElement;
-    private Shape? _selectedShape;
+    private readonly List<Shape> _selectedShapes = [];
     private DotNetObjectReference<Home>? _dotNetRef;
 
     private double _contextMenuXpx;
@@ -63,7 +63,12 @@ public partial class Home : ComponentBase, IDisposable
 
     private async Task OnLockChanged(ChangeEventArgs e)
     {
-        IsLocked = (bool)(e.Value ?? false);
+        IsLocked = e.Value switch
+        {
+            bool boolValue => boolValue,
+            string stringValue when bool.TryParse(stringValue, out var parsed) => parsed,
+            _ => false
+        };
 
         await JsRuntime.InvokeVoidAsync("setLock", IsLocked);
     }
@@ -106,17 +111,40 @@ public partial class Home : ComponentBase, IDisposable
     [JSInvokable]
     public void OnShapeRightClicked(double svgX, double svgY, string shapeId)
     {
-        _selectedShape = Shapes.Find(s => s.Id == shapeId);
+        var shape = Shapes.Find(s => s.Id == shapeId);
+
+        if (shape == null)
+        {
+            return;
+        }
+
+        if (!_selectedShapes.Contains(shape))
+        {
+            _selectedShapes.Add(shape);
+        }
 
         ShowContextMenu(svgX, svgY);
     }
 
     private async Task DeleteShape()
     {
-        if (_selectedShape != null)
+        if (_selectedShapes.Count == 1)
         {
-            await JsRuntime.InvokeVoidAsync("deleteShape", _selectedShape.Id);
-            _selectedShape = null;
+            var shape = _selectedShapes[0];
+            await JsRuntime.InvokeVoidAsync("deleteShape", shape.Id);
+            _selectedShapes.Clear();
+            HideContextMenu();
+            await JsRuntime.InvokeVoidAsync("updateJson");
+        }
+    }
+
+    private async Task DeleteSelectedShapes()
+    {
+        if (_selectedShapes.Count > 1)
+        {
+            var shapeIds = _selectedShapes.Select(s => s.Id).ToArray();
+            await JsRuntime.InvokeVoidAsync("deleteSelectedShapes", shapeIds);
+            _selectedShapes.Clear();
             HideContextMenu();
             await JsRuntime.InvokeVoidAsync("updateJson");
         }
@@ -124,9 +152,10 @@ public partial class Home : ComponentBase, IDisposable
 
     private async Task GetShapeId()
     {
-        if (_selectedShape != null)
+        if (_selectedShapes.Count == 1)
         {
-            await JsRuntime.InvokeVoidAsync("alert", $"Shape ID: {_selectedShape.Id}");
+            var shape = _selectedShapes[0];
+            await JsRuntime.InvokeVoidAsync("alert", $"Shape ID: {shape.Id}");
 
             HideContextMenu();
         }

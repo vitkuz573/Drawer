@@ -7,23 +7,41 @@
     svg.style.backgroundColor = "#fff";
 
     let shapes = [];
-    let selectedShape = null;
+    let selectedShapes = [];
     let isDrawing = false;
     let isMoving = false;
     let isResizing = false;
+    let isSelecting = false;
     let resizeHandleIndex = -1;
-    let startX, startY;
-    let currentTool = 'rect'; // По умолчанию инструмент — прямоугольник
-    let currentColor = '#0000ff'; // По умолчанию синий цвет
+    let selectionStartX, selectionStartY;
+    let selectionRect = null;
+    let currentTool = 'rect';
+    let currentColor = '#0000ff';
     let currentElement = null;
     let isLocked = false;
-    let selectionBox = null;
+    let startX = 0, startY = 0;
+    let resizeStartX = 0, resizeStartY = 0;
 
     const dotNet = dotNetHelper;
 
     /**
+     * Генерирует уникальный идентификатор (UUID v4).
+     * @returns {string} Уникальный UUID.
+     */
+    function generateUniqueId() {
+        if (crypto && crypto.randomUUID) {
+            return crypto.randomUUID();
+        } else {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0,
+                    v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+    }
+
+    /**
      * Конфигурационный объект для всех типов фигур.
-     * Перемещен внутрь функции initialize для доступа к svgNS.
      */
     const shapeConfigs = {
         rect: {
@@ -36,6 +54,11 @@
             },
             /**
              * Создаёт объект фигуры прямоугольника.
+             * @param {string} id - Уникальный идентификатор фигуры.
+             * @param {number} x - X-координата прямоугольника.
+             * @param {number} y - Y-координата прямоугольника.
+             * @param {string} color - Цвет заливки прямоугольника.
+             * @returns {Object} Объект фигуры прямоугольника.
              */
             createShape: (id, x, y, color) => ({
                 id,
@@ -51,6 +74,8 @@
             }),
             /**
              * Создаёт SVG элемент для прямоугольника.
+             * @param {Object} shape - Объект фигуры прямоугольника.
+             * @returns {SVGRectElement} Созданный SVG элемент прямоугольника.
              */
             createElement: (shape) => {
                 const rect = document.createElementNS(svgNS, 'rect');
@@ -68,6 +93,8 @@
             },
             /**
              * Обновляет свойства SVG элемента прямоугольника.
+             * @param {SVGRectElement} element - SVG элемент прямоугольника.
+             * @param {Object} shape - Объект фигуры прямоугольника.
              */
             updateElement: (element, shape) => {
                 element.setAttribute('x', shape.x);
@@ -81,6 +108,8 @@
             },
             /**
              * Возвращает позиции ручек изменения размера для прямоугольника.
+             * @param {Object} shape - Объект фигуры прямоугольника.
+             * @returns {Array} Массив координат ручек изменения размера.
              */
             getResizeHandles: (shape) => ([
                 { x: shape.x, y: shape.y },
@@ -90,9 +119,9 @@
             ]),
             /**
              * Создаёт ручку изменения размера для прямоугольника.
-             * @param {Object} handle - Позиция ручки.
+             * @param {Object} handle - Координаты ручки.
              * @param {number} index - Индекс ручки.
-             * @returns {SVGElement} - Созданный элемент ручки.
+             * @returns {SVGRectElement} Созданный SVG элемент ручки изменения размера.
              */
             createResizeHandle: (handle, index) => {
                 const handleElement = document.createElementNS(svgNS, 'rect');
@@ -100,20 +129,22 @@
                 handleElement.setAttribute('y', handle.y - 4);
                 handleElement.setAttribute('width', 8);
                 handleElement.setAttribute('height', 8);
+                handleElement.setAttribute('fill', 'white');
+                handleElement.setAttribute('stroke', 'black');
+                handleElement.setAttribute('stroke-width', 1);
+                handleElement.setAttribute('data-index', index.toString());
+                handleElement.classList.add('resize-handle');
+                handleElement.style.cursor = "nwse-resize";
                 return handleElement;
             },
             /**
-             * Обновляет ручку изменения размера при перемещении фигуры.
-             * @param {SVGElement} handleElement - Элемент ручки.
-             * @param {Object} handle - Новая позиция ручки.
-             * @param {number} index - Индекс ручки.
-             */
-            updateResizeHandle: (handleElement, handle, index) => {
-                handleElement.setAttribute('x', handle.x - 4);
-                handleElement.setAttribute('y', handle.y - 4);
-            },
-            /**
              * Обновляет свойства прямоугольника при изменении размеров.
+             * @param {Object} shape - Объект фигуры прямоугольника.
+             * @param {string} handleIndex - Индекс ручки изменения размера.
+             * @param {number} currentX - Текущая X-координата курсора.
+             * @param {number} currentY - Текущая Y-координата курсора.
+             * @param {number} startX - Начальная X-координата изменения размера.
+             * @param {number} startY - Начальная Y-координата изменения размера.
              */
             resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
                 const dx = currentX - startX;
@@ -147,9 +178,7 @@
                         break;
                 }
 
-                // Проверка и установка минимальных размеров
                 if (newWidth < 10) {
-                    // Корректируем изменение ширины и позиции X
                     if (handleIndex === "0" || handleIndex === "2") {
                         newX -= (10 - newWidth);
                     }
@@ -157,14 +186,12 @@
                 }
 
                 if (newHeight < 10) {
-                    // Корректируем изменение высоты и позиции Y
                     if (handleIndex === "0" || handleIndex === "1") {
                         newY -= (10 - newHeight);
                     }
                     newHeight = 10;
                 }
 
-                // Применяем изменения только если размеры не меньше минимальных
                 shape.x = newX;
                 shape.y = newY;
                 shape.width = newWidth;
@@ -172,6 +199,11 @@
             },
             /**
              * Обновляет свойства фигуры при рисовании.
+             * @param {Object} shape - Объект фигуры прямоугольника.
+             * @param {number} currentX - Текущая X-координата курсора.
+             * @param {number} currentY - Текущая Y-координата курсора.
+             * @param {number} startX - Начальная X-координата рисования.
+             * @param {number} startY - Начальная Y-координата рисования.
              */
             updateShapeOnDraw: (shape, currentX, currentY, startX, startY) => {
                 const width = currentX - startX;
@@ -184,38 +216,52 @@
             },
             /**
              * Обновляет свойства фигуры при перемещении.
+             * @param {Object} shape - Объект фигуры прямоугольника.
+             * @param {number} dx - Изменение по оси X.
+             * @param {number} dy - Изменение по оси Y.
              */
             updateShapeOnMove: (shape, dx, dy) => {
-                shape.x += dx;
-                shape.y += dy;
+                if (shape.type === 'rect') {
+                    shape.x += dx;
+                    shape.y += dy;
+                }
             },
             /**
              * Обновляет рамку выделения для прямоугольника.
+             * @param {SVGRectElement} selectionBox - Элемент рамки выделения.
+             * @param {Array} shapes - Массив выбранных фигур.
              */
-            updateSelectionBox: (selectionBox, shape) => {
-                selectionBox.setAttribute("x", shape.x);
-                selectionBox.setAttribute("y", shape.y);
-                selectionBox.setAttribute("width", shape.width);
-                selectionBox.setAttribute("height", shape.height);
+            updateSelectionBox: (selectionBox, shapes) => {
+                const bounds = getShapesBoundingBox(shapes);
+                selectionBox.setAttribute("x", bounds.x);
+                selectionBox.setAttribute("y", bounds.y);
+                selectionBox.setAttribute("width", bounds.width);
+                selectionBox.setAttribute("height", bounds.height);
             },
             /**
              * Создаёт рамку выделения для прямоугольника.
+             * @param {Array} shapes - Массив выбранных фигур.
+             * @returns {SVGRectElement} Созданный элемент рамки выделения.
              */
-            createSelectionBox: (shape) => {
+            createSelectionBox: (shapes) => {
                 const box = document.createElementNS(svgNS, 'rect');
-                box.setAttribute("x", shape.x);
-                box.setAttribute("y", shape.y);
-                box.setAttribute("width", shape.width);
-                box.setAttribute("height", shape.height);
+                const bounds = getShapesBoundingBox(shapes);
+                box.setAttribute("x", bounds.x);
+                box.setAttribute("y", bounds.y);
+                box.setAttribute("width", bounds.width);
+                box.setAttribute("height", bounds.height);
                 box.setAttribute("class", "selection-box");
-                box.style.fill = "none";
+                box.style.fill = "rgba(0, 120, 215, 0.3)";
                 box.style.stroke = "blue";
                 box.style.strokeDasharray = "4";
+                box.style.pointerEvents = "none";
                 svg.appendChild(box);
                 return box;
             },
             /**
              * Обновляет цвет фигуры.
+             * @param {Object} shape - Объект фигуры.
+             * @param {string} color - Новый цвет заливки.
              */
             updateColor: (shape, color) => {
                 shape.fill = color;
@@ -223,8 +269,8 @@
             },
             /**
              * Проверяет, должна ли фигура быть удалена.
-             * @param {Object} shape - Фигура для проверки.
-             * @returns {boolean} - true, если фигура должна быть удалена, иначе false.
+             * @param {Object} shape - Объект фигуры.
+             * @returns {boolean} True, если фигура должна быть удалена, иначе False.
              */
             shouldRemove: (shape) => {
                 return shape.width === 0 || shape.height === 0;
@@ -240,6 +286,11 @@
             },
             /**
              * Создаёт объект фигуры круга.
+             * @param {string} id - Уникальный идентификатор фигуры.
+             * @param {number} x - X-координата центра круга.
+             * @param {number} y - Y-координата центра круга.
+             * @param {string} color - Цвет заливки круга.
+             * @returns {Object} Объект фигуры круга.
              */
             createShape: (id, x, y, color) => ({
                 id,
@@ -254,6 +305,8 @@
             }),
             /**
              * Создаёт SVG элемент для круга.
+             * @param {Object} shape - Объект фигуры круга.
+             * @returns {SVGCircleElement} Созданный SVG элемент круга.
              */
             createElement: (shape) => {
                 const circle = document.createElementNS(svgNS, 'circle');
@@ -270,6 +323,8 @@
             },
             /**
              * Обновляет свойства SVG элемента круга.
+             * @param {SVGCircleElement} element - SVG элемент круга.
+             * @param {Object} shape - Объект фигуры круга.
              */
             updateElement: (element, shape) => {
                 element.setAttribute('cx', shape.cx);
@@ -282,6 +337,8 @@
             },
             /**
              * Возвращает позиции ручек изменения размера для круга.
+             * @param {Object} shape - Объект фигуры круга.
+             * @returns {Array} Массив координат ручек изменения размера.
              */
             getResizeHandles: (shape) => ([
                 { x: shape.cx + shape.r, y: shape.cy },
@@ -291,40 +348,57 @@
             ]),
             /**
              * Создаёт ручку изменения размера для круга.
-             * @param {Object} handle - Позиция ручки.
+             * @param {Object} handle - Координаты ручки.
              * @param {number} index - Индекс ручки.
-             * @returns {SVGElement} - Созданный элемент ручки.
+             * @returns {SVGCircleElement} Созданный SVG элемент ручки изменения размера.
              */
             createResizeHandle: (handle, index) => {
                 const handleElement = document.createElementNS(svgNS, 'circle');
                 handleElement.setAttribute('cx', handle.x);
                 handleElement.setAttribute('cy', handle.y);
                 handleElement.setAttribute('r', 6);
+                handleElement.setAttribute('fill', 'white');
+                handleElement.setAttribute('stroke', 'black');
+                handleElement.setAttribute('stroke-width', 1);
+                handleElement.setAttribute('data-index', index.toString());
+                handleElement.classList.add('resize-handle');
+                handleElement.style.cursor = "nwse-resize";
                 return handleElement;
             },
             /**
-             * Обновляет ручку изменения размера при перемещении фигуры.
-             * @param {SVGElement} handleElement - Элемент ручки.
-             * @param {Object} handle - Новая позиция ручки.
-             * @param {number} index - Индекс ручки.
-             */
-            updateResizeHandle: (handleElement, handle, index) => {
-                handleElement.setAttribute('cx', handle.x);
-                handleElement.setAttribute('cy', handle.y);
-            },
-            /**
              * Обновляет свойства круга при изменении размеров.
+             * @param {Object} shape - Объект фигуры круга.
+             * @param {string} handleIndex - Индекс ручки изменения размера.
+             * @param {number} currentX - Текущая X-координата курсора.
+             * @param {number} currentY - Текущая Y-координата курсора.
+             * @param {number} startX - Начальная X-координата изменения размера.
+             * @param {number} startY - Начальная Y-координата изменения размера.
              */
             resize: (shape, handleIndex, currentX, currentY, startX, startY) => {
-                const dx = currentX - shape.cx;
-                const dy = currentY - shape.cy;
-                const newR = Math.sqrt(dx * dx + dy * dy);
+                let newR;
 
-                // Устанавливаем минимальный радиус
+                switch (handleIndex) {
+                    case "0": // Восток
+                    case "1": // Запад
+                        newR = Math.abs(currentX - shape.cx);
+                        break;
+                    case "2": // Юг
+                    case "3": // Север
+                        newR = Math.abs(currentY - shape.cy);
+                        break;
+                    default:
+                        newR = Math.sqrt((currentX - shape.cx) ** 2 + (currentY - shape.cy) ** 2);
+                }
+
                 shape.r = Math.max(newR, 10);
             },
             /**
              * Обновляет свойства фигуры при рисовании.
+             * @param {Object} shape - Объект фигуры круга.
+             * @param {number} currentX - Текущая X-координата курсора.
+             * @param {number} currentY - Текущая Y-координата курсора.
+             * @param {number} startX - Начальная X-координата рисования.
+             * @param {number} startY - Начальная Y-координата рисования.
              */
             updateShapeOnDraw: (shape, currentX, currentY, startX, startY) => {
                 const dx = currentX - startX;
@@ -335,6 +409,9 @@
             },
             /**
              * Обновляет свойства фигуры при перемещении.
+             * @param {Object} shape - Объект фигуры круга.
+             * @param {number} dx - Изменение по оси X.
+             * @param {number} dy - Изменение по оси Y.
              */
             updateShapeOnMove: (shape, dx, dy) => {
                 shape.cx += dx;
@@ -342,29 +419,40 @@
             },
             /**
              * Обновляет рамку выделения для круга.
+             * @param {SVGRectElement} selectionBox - Элемент рамки выделения.
+             * @param {Array} shapes - Массив выбранных фигур.
              */
-            updateSelectionBox: (selectionBox, shape) => {
-                selectionBox.setAttribute("cx", shape.cx);
-                selectionBox.setAttribute("cy", shape.cy);
-                selectionBox.setAttribute("r", shape.r);
+            updateSelectionBox: (selectionBox, shapes) => {
+                const bounds = getShapesBoundingBox(shapes);
+                selectionBox.setAttribute("x", bounds.x);
+                selectionBox.setAttribute("y", bounds.y);
+                selectionBox.setAttribute("width", bounds.width);
+                selectionBox.setAttribute("height", bounds.height);
             },
             /**
              * Создаёт рамку выделения для круга.
+             * @param {Array} shapes - Массив выбранных фигур.
+             * @returns {SVGRectElement} Созданный элемент рамки выделения.
              */
-            createSelectionBox: (shape) => {
-                const box = document.createElementNS(svgNS, 'circle');
-                box.setAttribute("cx", shape.cx);
-                box.setAttribute("cy", shape.cy);
-                box.setAttribute("r", shape.r);
+            createSelectionBox: (shapes) => {
+                const box = document.createElementNS(svgNS, 'rect');
+                const bounds = getShapesBoundingBox(shapes);
+                box.setAttribute("x", bounds.x);
+                box.setAttribute("y", bounds.y);
+                box.setAttribute("width", bounds.width);
+                box.setAttribute("height", bounds.height);
                 box.setAttribute("class", "selection-box");
-                box.style.fill = "none";
+                box.style.fill = "rgba(0, 120, 215, 0.3)";
                 box.style.stroke = "blue";
                 box.style.strokeDasharray = "4";
+                box.style.pointerEvents = "none";
                 svg.appendChild(box);
                 return box;
             },
             /**
              * Обновляет цвет фигуры.
+             * @param {Object} shape - Объект фигуры.
+             * @param {string} color - Новый цвет заливки.
              */
             updateColor: (shape, color) => {
                 shape.fill = color;
@@ -372,8 +460,8 @@
             },
             /**
              * Проверяет, должна ли фигура быть удалена.
-             * @param {Object} shape - Фигура для проверки.
-             * @returns {boolean} - true, если фигура должна быть удалена, иначе false.
+             * @param {Object} shape - Объект фигуры.
+             * @returns {boolean} True, если фигура должна быть удалена, иначе False.
              */
             shouldRemove: (shape) => {
                 return shape.r === 0;
@@ -382,49 +470,75 @@
     };
 
     /**
-     * Создаёт ручки для изменения размеров выбранной фигуры.
-     * @param {Object} shape - Выбранная фигура.
+    * Создаёт рамку выделения, охватывающую все выбранные фигуры.
+    * @param {Array} shapes - Массив выбранных фигур.
+    * @returns {Object} Объект с координатами и размерами рамки.
+    */
+    function getShapesBoundingBox(shapes) {
+        if (shapes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+        shapes.forEach(shape => {
+            if (shape.type === 'rect') {
+                minX = Math.min(minX, shape.x);
+                minY = Math.min(minY, shape.y);
+                maxX = Math.max(maxX, shape.x + shape.width);
+                maxY = Math.max(maxY, shape.y + shape.height);
+            } else if (shape.type === 'circle') {
+                minX = Math.min(minX, shape.cx - shape.r);
+                minY = Math.min(minY, shape.cy - shape.r);
+                maxX = Math.max(maxX, shape.cx + shape.r);
+                maxY = Math.max(maxY, shape.cy + shape.r);
+            }
+        });
+
+        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+
+    /**
+     * Создаёт ручки для изменения размеров выбранных фигур.
+     * @param {Array} shapes - Массив выбранных фигур.
      */
-    function createResizeHandles(shape) {
+    function createResizeHandles(shapes) {
         removeResizeHandles();
 
-        if (!shape) return;
+        if (!shapes || shapes.length === 0) return;
 
+        if (shapes.length > 1) return;
+
+        const shape = shapes[0];
         const config = shapeConfigs[shape.type];
         if (!config) return;
 
         const handles = config.getResizeHandles(shape);
 
         handles.forEach((handle, index) => {
-            // Создание ручки через конфигурацию фигуры
             const handleElement = config.createResizeHandle(handle, index);
 
-            // Общие настройки ручки
-            handleElement.classList.add('resize-handle');
-            handleElement.setAttribute('data-index', index.toString());
-            handleElement.style.fill = "white";
-            handleElement.style.stroke = "black";
-            handleElement.style.cursor = "nwse-resize";
-            handleElement.style.pointerEvents = "all";
-
-            // Добавление обработчика события mousedown на ручку
             handleElement.addEventListener('mousedown', (event) => {
                 if (isLocked) return;
                 event.stopPropagation();
                 isResizing = true;
                 resizeHandleIndex = event.currentTarget.getAttribute('data-index');
                 const rect = svg.getBoundingClientRect();
-                startX = event.clientX - rect.left;
-                startY = event.clientY - rect.top;
+                resizeStartX = event.clientX - rect.left;
+                resizeStartY = event.clientY - rect.top;
             });
 
             svg.appendChild(handleElement);
         });
 
-        const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
-        shapeElements.forEach(el => el.classList.add("selected"));
+        shapes.forEach(shape => {
+            const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
+            shapeElements.forEach(el => el.classList.add("selected"));
+        });
 
-        selectedShape = shape;
+        if (selectionRect) {
+            config.updateSelectionBox(selectionRect, shapes);
+        } else {
+            selectionRect = config.createSelectionBox(shapes);
+        }
     }
 
     /**
@@ -436,32 +550,13 @@
     }
 
     /**
-     * Обновляет позиции ручек изменения размеров выбранной фигуры.
-     * @param {Object} shape - Выбранная фигура.
-     */
-    function updateResizeHandles(shape) {
-        if (!shape || !selectionBox) return;
-
-        const config = shapeConfigs[shape.type];
-        if (!config) return;
-
-        const handles = config.getResizeHandles(shape);
-        const handleElements = svg.querySelectorAll('.resize-handle');
-
-        handleElements.forEach((handleElement, index) => {
-            const handle = handles[index];
-            config.updateResizeHandle(handleElement, handle, index);
-        });
-    }
-
-    /**
      * Очищает текущий выбор и удаляет рамку выделения.
      */
     function clearSelection() {
-        selectedShape = null;
-        if (selectionBox) {
-            selectionBox.remove();
-            selectionBox = null;
+        selectedShapes = [];
+        if (selectionRect) {
+            selectionRect.remove();
+            selectionRect = null;
         }
         removeResizeHandles();
         shapes.forEach(shape => {
@@ -478,21 +573,23 @@
     }
 
     /**
-     * Выбирает фигуру и отображает рамку выделения.
-     * @param {Object} shape - Фигура для выбора.
+     * Выбирает фигуры и отображает рамку выделения.
+     * @param {Array} shapes - Массив фигур для выбора.
      */
-    function selectShape(shape) {
+    function selectShapes(shapes) {
         if (isLocked) return;
 
         clearSelection();
-        selectedShape = shape;
+        selectedShapes = shapes;
 
-        const config = shapeConfigs[shape.type];
+        if (selectedShapes.length === 0) return;
+
+        const config = shapeConfigs[selectedShapes[0].type];
         if (!config) return;
 
-        selectionBox = config.createSelectionBox(shape);
+        selectionRect = config.createSelectionBox(selectedShapes);
 
-        createResizeHandles(shape);
+        createResizeHandles(selectedShapes);
     }
 
     /**
@@ -524,8 +621,39 @@
     }
 
     /**
+     * Удаляет несколько фигур из SVG и массива фигур.
+     * @param {Array} shapeIds - Массив уникальных идентификаторов фигур для удаления.
+     */
+    window.deleteSelectedShapes = function (shapeIds) {
+        if (!shapeIds || shapeIds.length === 0) {
+            return;
+        }
+
+        shapeIds.forEach(shapeId => {
+            const shapeIndex = shapes.findIndex(s => s.id === shapeId);
+            if (shapeIndex === -1) {
+                return;
+            }
+
+            const shape = shapes[shapeIndex];
+            const config = shapeConfigs[shape.type];
+            if (!config) {
+                return;
+            }
+
+            const shapeElements = Array.from(svg.querySelectorAll('*')).filter(el => el.dataset.id === shape.id);
+            shapeElements.forEach(el => el.remove());
+
+            shapes.splice(shapeIndex, 1);
+        });
+
+        clearSelection();
+        updateJson();
+    }
+
+    /**
      * Устанавливает текущий цвет для рисования.
-     * @param {string} color - Код цвета.
+     * @param {string} color - Новый цвет заливки.
      */
     window.setColor = function (color) {
         currentColor = color;
@@ -543,19 +671,23 @@
 
     /**
      * Устанавливает текущий инструмент для рисования.
-     * @param {string} tool - Название инструмента.
+     * @param {string} tool - Название инструмента (например, 'rect', 'circle', 'select').
      */
     window.setTool = function (tool) {
-        if (shapeConfigs[tool]) {
+        if (shapeConfigs[tool] || tool === 'select') {
             currentTool = tool;
         } else {
             console.warn(`Инструмент "${tool}" не поддерживается.`);
+        }
+
+        if (currentTool !== 'select') {
+            clearSelection();
         }
     }
 
     /**
      * Возвращает текущие фигуры в формате JSON.
-     * @returns {string} - JSON строка с фигурами.
+     * @returns {string} JSON строка с данными фигур.
      */
     window.getShapes = function () {
         const dataOnlyShapes = shapes.map(shape => {
@@ -567,7 +699,7 @@
 
     /**
      * Устанавливает состояние блокировки для предотвращения взаимодействий.
-     * @param {boolean} lockState - true для блокировки, false для разблокировки.
+     * @param {boolean} lockState - Состояние блокировки (true - заблокировано, false - разблокировано).
      */
     window.setLock = function (lockState) {
         isLocked = lockState;
@@ -587,7 +719,7 @@
 
     /**
      * Обновляет SVG на основе переданного JSON.
-     * @param {string} json - JSON строка с фигурами.
+     * @param {string} json - JSON строка с данными фигур.
      */
     window.updateShapesFromJson = function (json) {
         try {
@@ -598,7 +730,6 @@
                 return;
             }
 
-            // Удаление существующих фигур из SVG
             shapes.forEach(shape => {
                 const config = shapeConfigs[shape.type];
                 if (config) {
@@ -608,12 +739,11 @@
             });
             shapes = [];
 
-            // Создание новых фигур из JSON
             shapesData.forEach(shapeData => {
                 const config = shapeConfigs[shapeData.type];
                 if (config) {
                     const newShape = config.createShape(
-                        shapeData.id,
+                        shapeData.id || generateUniqueId(),
                         shapeData.x !== undefined ? shapeData.x : (shapeData.cx || 0),
                         shapeData.y !== undefined ? shapeData.y : (shapeData.cy || 0),
                         shapeData.fill || config.defaultProps.fill
@@ -648,6 +778,7 @@
 
     /**
      * Обрабатывает событие mousedown на SVG.
+     * @param {MouseEvent} event - Событие мыши.
      */
     svg.addEventListener("mousedown", (event) => {
         if (isLocked) return;
@@ -655,7 +786,7 @@
 
         event.preventDefault();
 
-        if (event.button !== 0) return; // Обработка только левого клика
+        if (event.button !== 0) return;
 
         const rect = svg.getBoundingClientRect();
         const x = event.clientX - rect.left;
@@ -667,30 +798,68 @@
         if (shapeId) {
             const shape = shapes.find(s => s.id === shapeId);
             if (shape) {
-                selectShape(shape);
-                isMoving = true;
-                startX = x;
-                startY = y;
+                if (currentTool === 'select') {
+                    const isShiftPressed = event.shiftKey;
 
-                dotNet.invokeMethodAsync('HideContextMenu');
+                    if (isShiftPressed) {
+                        if (selectedShapes.includes(shape)) {
+                            selectedShapes = selectedShapes.filter(s => s.id !== shape.id);
+                        } else {
+                            selectedShapes.push(shape);
+                        }
+                    } else {
+                        selectShapes([shape]);
+                    }
+
+                    if (selectedShapes.length > 0) {
+                        isMoving = true;
+                        startX = x;
+                        startY = y;
+
+                        dotNet.invokeMethodAsync('HideContextMenu');
+                    }
+                }
+                return;
             }
-            return;
         }
 
-        isDrawing = true;
-        startX = x;
-        startY = y;
+        if (currentTool === 'select') {
+            isSelecting = true;
+            selectionStartX = x;
+            selectionStartY = y;
 
-        const id = generateUniqueId();
-        const newShape = shapeConfigs[currentTool].createShape(id, x, y, currentColor);
-        shapes.push(newShape);
+            selectionRect = document.createElementNS(svgNS, 'rect');
+            selectionRect.setAttribute("x", x);
+            selectionRect.setAttribute("y", y);
+            selectionRect.setAttribute("width", 0);
+            selectionRect.setAttribute("height", 0);
+            selectionRect.setAttribute("class", "selection-box");
+            selectionRect.style.fill = "rgba(0, 120, 215, 0.3)";
+            selectionRect.style.stroke = "blue";
+            selectionRect.style.strokeDasharray = "4";
+            selectionRect.style.pointerEvents = "none";
+            svg.appendChild(selectionRect);
+        } else {
+            isDrawing = true;
 
-        newShape.element = shapeConfigs[currentTool].createElement(newShape);
-        currentElement = newShape.element;
+            let newShape;
+            if (currentTool === 'rect') {
+                newShape = shapeConfigs.rect.createShape(generateUniqueId(), x, y, currentColor);
+            } else if (currentTool === 'circle') {
+                newShape = shapeConfigs.circle.createShape(generateUniqueId(), x, y, currentColor);
+            } else {
+                return;
+            }
+
+            shapes.push(newShape);
+            newShape.element = shapeConfigs[newShape.type].createElement(newShape);
+            currentElement = newShape.element;
+        }
     });
 
     /**
      * Обрабатывает событие mousemove глобально.
+     * @param {MouseEvent} event - Событие мыши.
      */
     window.addEventListener("mousemove", (event) => {
         if (isLocked) return;
@@ -699,6 +868,18 @@
         const currentX = event.clientX - rect.left;
         const currentY = event.clientY - rect.top;
 
+        if (isSelecting && selectionRect) {
+            const width = currentX - selectionStartX;
+            const height = currentY - selectionStartY;
+
+            selectionRect.setAttribute("x", width < 0 ? currentX : selectionStartX);
+            selectionRect.setAttribute("y", height < 0 ? currentY : selectionStartY);
+            selectionRect.setAttribute("width", Math.abs(width));
+            selectionRect.setAttribute("height", Math.abs(height));
+
+            return;
+        }
+
         if (isDrawing && currentElement) {
             const shape = shapes[shapes.length - 1];
             const config = shapeConfigs[shape.type];
@@ -706,28 +887,40 @@
                 return;
             }
 
-            config.updateShapeOnDraw(shape, currentX, currentY, startX, startY);
+            let startXCoord, startYCoord;
+            if (shape.type === 'rect') {
+                startXCoord = shape.x;
+                startYCoord = shape.y;
+            } else if (shape.type === 'circle') {
+                startXCoord = shape.cx;
+                startYCoord = shape.cy;
+            }
+
+            config.updateShapeOnDraw(shape, currentX, currentY, startXCoord, startYCoord);
             config.updateElement(shape.element, shape);
             updateJson();
         }
 
-        if (isMoving && selectedShape) {
+        if (isMoving && selectedShapes.length > 0) {
             const dx = currentX - startX;
             const dy = currentY - startY;
 
-            const config = shapeConfigs[selectedShape.type];
-            if (!config) {
-                return;
+            selectedShapes.forEach(shape => {
+                const config = shapeConfigs[shape.type];
+                if (!config) return;
+
+                config.updateShapeOnMove(shape, dx, dy);
+                config.updateElement(shape.element, shape);
+            });
+
+            if (selectionRect) {
+                const config = shapeConfigs[selectedShapes[0].type];
+                if (config) {
+                    config.updateSelectionBox(selectionRect, selectedShapes);
+                }
             }
 
-            config.updateShapeOnMove(selectedShape, dx, dy);
-            config.updateElement(selectedShape.element, selectedShape);
-
-            if (selectionBox) {
-                config.updateSelectionBox(selectionBox, selectedShape);
-            }
-
-            updateResizeHandles(selectedShape);
+            createResizeHandles(selectedShapes);
 
             startX = currentX;
             startY = currentY;
@@ -735,24 +928,21 @@
             updateJson();
         }
 
-        if (isResizing && selectedShape) {
-            const config = shapeConfigs[selectedShape.type];
+        if (isResizing && selectedShapes.length === 1) {
+            const shape = selectedShapes[0];
+            const config = shapeConfigs[shape.type];
             if (!config) {
                 return;
             }
 
-            config.resize(selectedShape, resizeHandleIndex, currentX, currentY, startX, startY);
+            config.resize(shape, resizeHandleIndex, currentX, currentY, resizeStartX, resizeStartY);
+            config.updateElement(shape.element, shape);
 
-            config.updateElement(selectedShape.element, selectedShape);
-
-            if (selectionBox) {
-                config.updateSelectionBox(selectionBox, selectedShape);
+            if (selectionRect) {
+                config.updateSelectionBox(selectionRect, selectedShapes);
             }
 
-            updateResizeHandles(selectedShape);
-
-            startX = currentX;
-            startY = currentY;
+            createResizeHandles(selectedShapes);
 
             updateJson();
         }
@@ -763,6 +953,44 @@
      */
     window.addEventListener("mouseup", () => {
         if (isLocked) return;
+
+        if (isSelecting && selectionRect) {
+            isSelecting = false;
+
+            const rect = {
+                x: parseFloat(selectionRect.getAttribute("x")),
+                y: parseFloat(selectionRect.getAttribute("y")),
+                width: parseFloat(selectionRect.getAttribute("width")),
+                height: parseFloat(selectionRect.getAttribute("height"))
+            };
+
+            const newlySelectedShapes = shapes.filter(shape => {
+                if (shape.type === 'rect') {
+                    return (
+                        shape.x < rect.x + rect.width &&
+                        shape.x + shape.width > rect.x &&
+                        shape.y < rect.y + rect.height &&
+                        shape.y + shape.height > rect.y
+                    );
+                } else if (shape.type === 'circle') {
+                    const distX = Math.max(rect.x, Math.min(shape.cx, rect.x + rect.width));
+                    const distY = Math.max(rect.y, Math.min(shape.cy, rect.y + rect.height));
+                    const distance = Math.sqrt((shape.cx - distX) ** 2 + (shape.cy - distY) ** 2);
+                    return distance < shape.r;
+                }
+                return false;
+            });
+
+            if (newlySelectedShapes.length > 0) {
+                selectShapes(newlySelectedShapes);
+            } else {
+                clearSelection();
+            }
+
+            selectionRect.remove();
+            selectionRect = null;
+            return;
+        }
 
         if (isDrawing) {
             isDrawing = false;
@@ -803,6 +1031,7 @@
 
     /**
      * Обрабатывает событие contextmenu (правый клик) на SVG.
+     * @param {MouseEvent} event - Событие мыши.
      */
     svg.addEventListener("contextmenu", (event) => {
         if (isLocked) return;
@@ -819,7 +1048,11 @@
         if (shapeId) {
             const shape = shapes.find(s => s.id === shapeId);
             if (shape) {
-                selectShape(shape);
+                if (currentTool === 'select') {
+                    if (!selectedShapes.includes(shape)) {
+                        selectShapes([shape]);
+                    }
+                }
                 dotNet.invokeMethodAsync('OnShapeRightClicked', x, y, shape.id);
             }
         } else {
@@ -829,6 +1062,7 @@
 
     /**
      * Обработчик кликов по документу для скрытия контекстного меню при клике вне его.
+     * @param {MouseEvent} event - Событие мыши.
      */
     document.addEventListener("click", (event) => {
         const contextMenu = document.getElementById("context-menu");
@@ -850,20 +1084,12 @@
 
     /**
      * Проверяет, был ли клик внутри контекстного меню.
-     * @param {Event} event - Событие клика.
-     * @returns {boolean} - true, если клик внутри меню, иначе false.
+     * @param {MouseEvent} event - Событие мыши.
+     * @returns {boolean} True, если клик был внутри контекстного меню, иначе False.
      */
     function _isClickInsideContextMenu(event) {
         const contextMenu = document.getElementById("context-menu");
         if (!contextMenu) return false;
         return contextMenu.contains(event.target);
-    }
-
-    /**
-     * Генерирует уникальный идентификатор (UUID v4).
-     * @returns {string} - Уникальный идентификатор.
-     */
-    function generateUniqueId() {
-        return crypto.randomUUID();
     }
 };

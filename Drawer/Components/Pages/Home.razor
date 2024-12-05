@@ -11,6 +11,7 @@
         <select @onchange="OnToolChanged" class="rounded border border-gray-300 p-2 shadow-sm">
             <option value="rect">Прямоугольник</option>
             <option value="circle">Круг</option>
+            <option value="select">Выделение</option>
         </select>
         <input type="color" value="@SelectedColor" @onchange="OnColorChanged" class="h-8 w-12 rounded border border-gray-300 p-1 shadow-sm" />
         <label class="flex items-center space-x-2">
@@ -27,8 +28,15 @@
             <div id="context-menu" style="top:@($"{_contextMenuYpx}px"); left:@($"{_contextMenuXpx}px"); display: block;"
                  class="z-[1000] absolute min-w-[150px] rounded-md border border-gray-300 bg-white shadow-lg">
                 <ul class="m-0 list-none p-0">
-                    <li @onclick="DeleteShape" class="cursor-pointer p-2 hover:bg-gray-100">Удалить фигуру</li>
-                    <li @onclick="GetShapeId" class="cursor-pointer p-2 hover:bg-gray-100">Получить ID</li>
+                    @if (_selectedShapes.Count == 1)
+                    {
+                        <li @onclick="DeleteShape" class="cursor-pointer p-2 hover:bg-gray-100">Удалить фигуру</li>
+                        <li @onclick="GetShapeId" class="cursor-pointer p-2 hover:bg-gray-100">Получить ID</li>
+                    }
+                    else if (_selectedShapes.Count > 1)
+                    {
+                        <li @onclick="DeleteSelectedShapes" class="cursor-pointer p-2 hover:bg-gray-100">Удалить выбранные</li>
+                    }
                 </ul>
             </div>
         }
@@ -43,28 +51,14 @@
     .resize-handle {
         fill: white;
         stroke: black;
-        cursor: pointer;
+        cursor: nwse-resize;
         shape-rendering: crispEdges;
     }
 
     .selection-box {
-        fill: none;
-        stroke: gray;
+        fill: rgba(0, 120, 215, 0.3);
+        stroke: blue;
         stroke-dasharray: 4;
-        shape-rendering: crispEdges;
-        pointer-events: none;
-    }
-
-    .line-selection {
-        stroke: gray;
-        stroke-dasharray: 4;
-        shape-rendering: crispEdges;
-    }
-
-    .handle-line {
-        fill: white;
-        stroke: black;
-        cursor: pointer;
         shape-rendering: crispEdges;
     }
 
