@@ -1,8 +1,13 @@
 ﻿window.initialize = function (svgElement, dotNetHelper) {
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = svgElement;
-    svg.setAttribute("width", 800);
-    svg.setAttribute("height", 600);
+
+    const svgWidth = 800;
+    const svgHeight = 600;
+    const buffer = 10;
+
+    svg.setAttribute("width", svgWidth);
+    svg.setAttribute("height", svgHeight);
     svg.style.border = "1px solid #ccc";
     svg.style.backgroundColor = "#fff";
 
@@ -156,6 +161,7 @@
                         break;
                 }
 
+                // Ограничение минимальных размеров
                 if (newWidth < 10) {
                     if (handleIndex === "0" || handleIndex === "2") {
                         newX -= (10 - newWidth);
@@ -170,6 +176,12 @@
                     newHeight = 10;
                 }
 
+                // Ограничение границ SVG с учётом буфера
+                newX = Math.max(buffer, Math.min(newX, svgWidth - buffer - newWidth));
+                newY = Math.max(buffer, Math.min(newY, svgHeight - buffer - newHeight));
+                newWidth = Math.min(newWidth, svgWidth - buffer - newX);
+                newHeight = Math.min(newHeight, svgHeight - buffer - newY);
+
                 shape.x = newX;
                 shape.y = newY;
                 shape.width = newWidth;
@@ -179,21 +191,41 @@
              * Обновляет свойства фигуры при рисовании.
              */
             updateShapeOnDraw: (shape, currentX, currentY, startX, startY) => {
-                const width = currentX - startX;
-                const height = currentY - startY;
+                let width = currentX - startX;
+                let height = currentY - startY;
+
+                // Ограничение ширины и высоты, чтобы фигура не выходила за границы SVG с учётом буфера
+                if (startX + width < buffer) {
+                    width = buffer - startX;
+                } else if (startX + width > svgWidth - buffer) {
+                    width = (svgWidth - buffer) - startX;
+                }
+
+                if (startY + height < buffer) {
+                    height = buffer - startY;
+                } else if (startY + height > svgHeight - buffer) {
+                    height = (svgHeight - buffer) - startY;
+                }
 
                 shape.width = Math.abs(width);
                 shape.height = Math.abs(height);
-                shape.x = width < 0 ? currentX : startX;
-                shape.y = height < 0 ? currentY : startY;
+                shape.x = width < 0 ? startX + width : startX;
+                shape.y = height < 0 ? startY + height : startY;
             },
             /**
              * Обновляет свойства фигуры при перемещении.
              */
             updateShapeOnMove: (shape, dx, dy) => {
                 if (shape.type === 'rect') {
-                    shape.x += dx;
-                    shape.y += dy;
+                    let newX = shape.x + dx;
+                    let newY = shape.y + dy;
+
+                    // Ограничение перемещения с учётом буфера
+                    newX = Math.max(buffer, Math.min(newX, svgWidth - buffer - shape.width));
+                    newY = Math.max(buffer, Math.min(newY, svgHeight - buffer - shape.height));
+
+                    shape.x = newX;
+                    shape.y = newY;
                 }
             },
             /**
@@ -304,15 +336,35 @@
                         newR = Math.sqrt((currentX - shape.cx) ** 2 + (currentY - shape.cy) ** 2);
                 }
 
-                shape.r = Math.max(newR, 10);
+                // Ограничение радиуса, чтобы круг не выходил за пределы SVG с учётом буфера
+                newR = Math.min(Math.max(newR, 10),
+                    Math.min(
+                        shape.cx - buffer,
+                        svgWidth - buffer - shape.cx,
+                        shape.cy - buffer,
+                        svgHeight - buffer - shape.cy
+                    )
+                );
+
+                shape.r = newR;
             },
             /**
              * Обновляет свойства фигуры при рисовании.
              */
             updateShapeOnDraw: (shape, currentX, currentY, startX, startY) => {
-                const dx = currentX - startX;
-                const dy = currentY - startY;
-                shape.r = Math.sqrt(dx * dx + dy * dy);
+                let dx = currentX - startX;
+                let dy = currentY - startY;
+                let r = Math.sqrt(dx * dx + dy * dy);
+
+                // Ограничение радиуса, чтобы круг не выходил за пределы SVG с учётом буфера
+                r = Math.min(r, Math.min(
+                    shape.cx - buffer,
+                    svgWidth - buffer - shape.cx,
+                    shape.cy - buffer,
+                    svgHeight - buffer - shape.cy
+                ));
+
+                shape.r = r;
                 shape.cx = startX;
                 shape.cy = startY;
             },
@@ -320,8 +372,17 @@
              * Обновляет свойства фигуры при перемещении.
              */
             updateShapeOnMove: (shape, dx, dy) => {
-                shape.cx += dx;
-                shape.cy += dy;
+                if (shape.type === 'circle') {
+                    let newCx = shape.cx + dx;
+                    let newCy = shape.cy + dy;
+
+                    // Ограничение перемещения с учётом буфера
+                    newCx = Math.max(buffer + shape.r, Math.min(newCx, svgWidth - buffer - shape.r));
+                    newCy = Math.max(buffer + shape.r, Math.min(newCy, svgHeight - buffer - shape.r));
+
+                    shape.cx = newCx;
+                    shape.cy = newCy;
+                }
             },
             /**
              * Обновляет цвет фигуры.
@@ -651,6 +712,27 @@
 
                     Object.assign(newShape, shapeData);
 
+                    // Ограничение размеров при создании из JSON
+                    if (newShape.type === 'rect') {
+                        // Ограничение позиции и размеров
+                        newShape.x = Math.max(buffer, Math.min(newShape.x, svgWidth - buffer - newShape.width));
+                        newShape.y = Math.max(buffer, Math.min(newShape.y, svgHeight - buffer - newShape.height));
+                        newShape.width = Math.min(newShape.width, svgWidth - buffer - newShape.x);
+                        newShape.height = Math.min(newShape.height, svgHeight - buffer - newShape.y);
+                    } else if (newShape.type === 'circle') {
+                        // Ограничение позиции и радиуса
+                        newShape.cx = Math.max(buffer + newShape.r, Math.min(newShape.cx, svgWidth - buffer - newShape.r));
+                        newShape.cy = Math.max(buffer + newShape.r, Math.min(newShape.cy, svgHeight - buffer - newShape.r));
+                        newShape.r = Math.min(newShape.r,
+                            Math.min(
+                                newShape.cx - buffer,
+                                svgWidth - buffer - newShape.cx,
+                                newShape.cy - buffer,
+                                svgHeight - buffer - newShape.cy
+                            )
+                        );
+                    }
+
                     newShape.element = config.createElement(newShape);
 
                     shapes.push(newShape);
@@ -694,6 +776,14 @@
 
         const target = event.target;
         const shapeId = target.dataset.id;
+
+        // Проверка, находится ли начальная точка внутри допустимой области
+        if (currentTool !== 'select') {
+            if (x < buffer || y < buffer || x > svgWidth - buffer || y > svgHeight - buffer) {
+                // Начало рисования за пределами области - запрещаем
+                return;
+            }
+        }
 
         if (shapeId) {
             const shape = shapes.find(s => s.id === shapeId);
@@ -833,7 +923,11 @@
                 return;
             }
 
-            config.resize(shape, resizeHandleIndex, currentX, currentY, resizeStartX, resizeStartY);
+            // Ограничиваем currentX и currentY в пределах SVG с учётом буфера
+            const cappedX = Math.max(buffer, Math.min(currentX, svgWidth - buffer));
+            const cappedY = Math.max(buffer, Math.min(currentY, svgHeight - buffer));
+
+            config.resize(shape, resizeHandleIndex, cappedX, cappedY, resizeStartX, resizeStartY);
             config.updateElement(shape.element, shape);
 
             if (selectionRect) {
